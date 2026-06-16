@@ -1,23 +1,29 @@
 #include <Arduino.h>
 #include "config.h"
+#include "Heizung.h"
 
-// put function declarations here:
-int myFunction(int, int);
+//Objekte anlegen
+
+Heizung heizungEG(HEIZUNG_EG_TASTER_PIN, HEIZUNG_EG_LED_PIN);
+Heizung heizung1OG(HEIZUNG_1OG_TASTER_PIN, HEIZUNG_1OG_LED_PIN);
+Heizung heizung2OG(HEIZUNG_2OG_TASTER_PIN, HEIZUNG_2OG_LED_PIN);
 
 void setup() {
-  // put your setup code here, to run once:
-  pinMode(LED_PIN, OUTPUT);
+
+  //Heizung
+  heizungEG.begin();
+  heizung1OG.begin();
+  heizung2OG.begin();
+
+
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  digitalWrite(LED_PIN, HIGH);
-  delay(2000);
-  digitalWrite(LED_PIN, LOW);
-  delay(2000);
-}
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+ //Heizung
+  heizungEG.update();
+  heizung1OG.update();
+  heizung2OG.update();
+
+
 }
