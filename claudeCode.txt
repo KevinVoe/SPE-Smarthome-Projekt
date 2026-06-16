@@ -1,0 +1,176 @@
+Ich muss als Ausbildungsprojekt mit 15 Kollegen ein Playmobilhaus in ein Smarthome verwandeln. Das geschieht mithilfe von elektronik, 3D druck und einem digitalem Dashboard durch einen Raspberry Pi. Ich kümmere mich mit einem Kollegen um die ganzen elektronischen Themen und die Programmierung der Steuerung und Regelung. Dashboard und Konstruktion machen andere Gruppen.  Die Steuerung und Regelung des Hauses erfolgt über ein ESP32 Wroom 32 U. In deinem Arbeitsordner findest du bereits ein VScode projekt mit Platform Io dafür. Bitte helfe mir vorerst eine saubere Systemarchitektur softwareseitig festzulegen, sodass wir modulweise sachen hinzufügen können und ich mit einem kollegen daran über github zusammen programmieren kann. Ich habe mir bereits überlegt, dass wir folgendes machen: Die gesamte Regelungslogik erfolgt in einem großen Main Programm, einzelne Steuerungselemente, wie heizungen (lediglich simuliert durch eine LED), Dachfenster (durch servos öffnenbar und schließbar) im lib Unterordner in separaten Dateien angelegt werden und durch main aufgerufen werden. Außerdem habe ich eine config datei vorgesehen, worin jegliche Pinbelegungen und eventuell generelle Konfigurationen vorgenommen werden (wie abtastraten oder weitere sachen). Generell werden sehr viele GPIOs verwendet werden, wodurch wir ein MCP23017 verwenden werden. Darauf werden dann diverse Taster und Schaltausgänge mit verbunden. Dabei weiß ich auch noch nicht ganz, wie ich das im config realisieren soll.
+
+Bitte erweitere das Grundgerüst unserer Programmierung sinnvoll, füge Kommentare ein, wo was hin soll und bearbeite die Readme Datei. Bitte führe mit mir ein umfangreiches interview durch mithilfe von multiple Choice fragen, damit du das Projekt konkret verstehst und schon sinnvoll anfangen kannst zu programmieren. Frage vor allem nach den gewünschten Funktionen, die Detailtiefe der umsetzung (tatsächliche Heizung bauen oder nur simulierung durch LED) und gewünschte Sensorik, auf die eine Regelung aufbauen kann
+
+Ich schaue mir zuerst das vorhandene PlatformIO-Projekt an, damit ich beim Interview und bei der Architektur auf dem aufbaue, was schon da ist.
+
+
+Ran a command, found files
+Es ist also tatsächlich ein Git-Repo. Ich lese die vorhandenen Dateien, um den aktuellen Stand zu verstehen.
+
+
+Read 4 files
+Jetzt lese ich die vorhandenen Modul-Dateien, um euer aktuelles Muster zu verstehen.
+
+
+Read 7 files
+Ich habe das vorhandene Projekt komplett durchgesehen. Kurz der Stand und ein paar Dinge, die mir aufgefallen sind — die fließen direkt in die Architektur ein:
+
+Aktueller Stand
+
+PlatformIO-Projekt für esp32dev, Arduino-Framework, Monitor 115200.
+lib/Config.h mit Pin-/Adress-Definitionen (ESP32-GPIOs, I²C, MCP23017, PCA9685).
+Module: Heizung (Taster→LED-Toggle mit Entprellung, sauber gemacht), Licht (NeoPixel + PIR), DiscoLight (leer).
+main.cpp legt 3 Heizungs-Objekte an und ruft begin()/update().
+Probleme, die ich gleich mitlösen sollte (wichtig für die GitHub-Zusammenarbeit):
+
+Config.h vs. config.h – ihr habt die Datei groß geschrieben, includet sie aber klein. Unter Windows egal, aber sobald ein Kollege auf Linux/Mac arbeitet oder eine CI läuft, bricht der Build. Muss vereinheitlicht werden.
+Flache .cpp in lib/ werden von PlatformIO gar nicht kompiliert. PlatformIO erwartet pro Modul einen Unterordner (lib/Heizung/Heizung.h + .cpp). So wie es jetzt liegt, würde Heizung.cpp nicht gelinkt → das ist genau die Architektur-Entscheidung, die wir sauber treffen sollten.
+Heizung.cpp Zeile 2: #include config.h (ohne Anführungszeichen) → Compilerfehler, und doppelt (Header macht das schon).
+Licht.cpp nutzt LICHT_*-Makros, die in Config.h fehlen, und es fehlt lib_deps für Adafruit_NeoPixel.
+DiscoLight.* sind leer.
+Das alles räume ich beim Aufsetzen der Architektur auf. Damit ich aber das Richtige baue, zuerst das Interview. Runde 1 von 2 — die vier Fragen, die die Grundarchitektur am stärksten bestimmen:
+
+Asked
+Funktionen
+Welche Teilsysteme soll das Smarthome steuern/regeln? (Mehrfachauswahl – bestimmt, welche Module wir anlegen)
+
+Es gibt auch ein Aufzug, der durch einen brushed motor in beide richtungen durch eine seilwinde bewegt wird, oben ist ein kontakt der schließt, sobald der fahrstuhl ganz oben ist. Um auf die beiden unteren Etagen zu kommen (dAs haus hat erdgeschoss, 1. etage und 2. etage) soll über eine zeitsteuerung des motors die netagen möglichst genau angefahren werden, Heizung & Klima, Beleuchtung, Beschattung & Dachfenster, Sicherheit & Zutritt
+
+Wie soll der ESP32 mit dem Dashboard auf dem Raspberry Pi kommunizieren? (zentrale Architektur-Entscheidung)
+
+Serielle Verbindung (UART/USB)
+
+Wie 'real' sollen die Aktoren umgesetzt werden? (du hattest Heizung=LED erwähnt – gilt das generell?)
+
+Mischung (Empfohlen)
+
+Auf welche Sensoren soll die Regelung aufbauen? (Mehrfachauswahl)
+
+Temperatur/Feuchte, Helligkeit (BH1750), Bewegung (PIR), Tür-/Fensterkontakte (Reed)
+
+Wie soll das Hauptprogramm die Module abarbeiten? (Programmierstil)
+
+Kooperativ, nicht-blockierend per millis() (Empfohlen)
+
+Wie sollen die MCP23017-Pins in Config/Code behandelt werden? (hier warst du unsicher)
+
+IO-Abstraktion: einheitliches read/write für ESP- und MCP-Pins (Empfohlen)
+
+Welche Automatik-Regeln soll die Regelungslogik zuerst umsetzen? (Mehrfachauswahl, später erweiterbar)
+
+Dachfenster schließen, wenn Heizung im OG an, Licht bei Bewegung + Dunkelheit, Alarm bei Tür-/Fensterkontakt (wenn scharf), Beschattung nach Helligkeit/Temperatur
+
+Alle Antworten sind da. Damit steht die Architektur. Kurz zusammengefasst, was ich umsetze:
+
+Subsysteme: Heizung (3 Etagen), Aufzug, Beleuchtung, Beschattung/Dachfenster, Sicherheit. Anbindung: UART2 → Raspberry Pi, JSON-Zeilen. Stil: kooperativ/nicht-blockierend (millis()), jedes Modul mit update(). MCP23017: IO-Abstraktion mit IoPin. Aufzug: Referenzfahrt + 2 Endschalter + Zeitsteuerung + Timeout. Regelung: zentrale regelung() in main mit allen 4 Automatik-Regeln.
+
+Jetzt baue ich das Gerüst.
+
+Architektur & Geruest aufbauen
+Erst räume ich die alte (nicht kompilierbare) Struktur auf und lege die Modul-Ordner an:
+
+Ran
+Remove old flat lib files, create module folders
+Struktur steht. Jetzt schreibe ich die Kern-Dateien — zuerst platformio.ini, die zentrale Config.h und die IO-Abstraktion (das Herzstück für den MCP23017):
+
+
+Created 2 files
+Jetzt die IO-Abstraktion — sie kapselt ESP32- und MCP23017-Pins hinter einer einheitlichen Schnittstelle:
+
+
+Created 2 files
+Jetzt die Module. Heizung (voll ausimplementiert als Referenz-Modul mit Hysterese + Taster) und Aufzug (Zustandsautomat mit Referenzfahrt + Timeout):
+
+
+Created 4 files
+Jetzt die übrigen Module: Licht, DiscoLight, Servoaktor, Alarm, Sensorik (teils als saubere Stubs mit klaren TODOs) und die Kommunikation:
+
+
+Created 10 files
+Jetzt die Kommunikation (JSON-Zeilen über UART) und das neue main.cpp mit der zentralen Regelungslogik:
+
+
+Created 3 files
+Zuletzt die Dokumentation — die ausführliche README.md sowie kurze Hinweise in include/ und lib/:
+
+
+Created 3 files
+Jetzt eine abschließende Kontrolle der Struktur und ob keine alten/fehlerhaften Referenzen übrig sind:
+
+Ran
+Verify file tree and check for stale references
+Die Struktur ist sauber. Ich prüfe noch, ob PlatformIO verfügbar ist, um das Gerüst testweise zu kompilieren:
+
+Ran
+Check if PlatformIO CLI is available
+PlatformIO ist da. Ich kompiliere das Gerüst (lädt beim ersten Mal Toolchain + Bibliotheken, kann etwas dauern):
+
+Ran
+Compile the project with PlatformIO
+Das ist ein Umgebungsproblem von PlatformIO/pip auf diesem Rechner (Can not combine '--user' and '--target') — nicht ein Fehler im Code. Vermutlich ist die Umgebungsvariable PIP_USER global gesetzt, was die Paketinstallation von PlatformIO bricht. Ich räume das kaputte Paket weg und baue mit PIP_USER=0:
+
+Ran
+Clean broken package and rebuild with PIP_USER disabled
+Da ist der echte Fehler: ESP32 ist ein vom ESP32-Core vordefiniertes Makro (-DESP32), deshalb kollidiert mein Enum-Wert ESP32. Die Toolchain-Installation lief jetzt aber durch. Ich benenne die Enum-Werte um (kleingeschrieben, garantiert kollisionsfrei):
+
+
+Edited 2 files, ran a command
+Wieder ein Namens-Kollisions-Problem: die Instanz alarm kollidiert mit der POSIX-Funktion alarm() aus <unistd.h> (über Arduino.h). Ich benenne die Instanz (nicht die Klasse) um:
+
+
+Edited a file, ran a command
+Build erfolgreich ✅ — alle Module und Bibliotheken kompilieren und linken (RAM 6.8 %, Flash 24.3 %). Drei kleine, aber lehrreiche Stolpersteine waren dabei: das ESP32-Makro, der PIP_USER-Konflikt eurer PlatformIO-Installation und die Namenskollision von alarm mit einer POSIX-Funktion.
+
+Ich halte mir noch zwei Dinge für die Zukunft fest (Projektkontext + den nicht offensichtlichen Build-Workaround):
+
+
+Recalled a memory, saved 4 memories
+Fertig — das Grundgerüst steht, kompiliert und ist dokumentiert. Hier der Überblick.
+
+Was jetzt da ist
+Saubere, modulare Architektur nach deinen Interview-Antworten. Jedes Subsystem ist ein eigenes Modul in lib/<Modul>/ (eigener Ordner pro Modul — wichtig, weil PlatformIO lose .cpp direkt in lib/ gar nicht kompiliert; das war einer der Gründe, warum euer alter Stand nicht baubar war).
+
+SPE-Smarthome-Projekt/
+├─ include/Config.h        ← ZENTRALE Konfiguration (alle Pins/Adressen/Parameter)
+├─ lib/
+│  ├─ Io/                  ← Pin-Abstraktion ESP32 ⇆ MCP23017  (Herzstück)
+│  ├─ Heizung/             ← voll fertig: Taster=manuell, sonst Hysterese
+│  ├─ Aufzug/              ← voll fertig: Zustandsautomat, Referenzfahrt+Timeout
+│  ├─ Licht/ DiscoLight/   ← NeoPixel
+│  ├─ Servoaktor/          ← Servos über PCA9685 (Dachfenster/Jalousie/Garage)
+│  ├─ Alarm/               ← Relais + Buzzer
+│  ├─ Sensorik/            ← liefert SIMULIERTE Werte (echte Sensoren = TODO)
+│  └─ Kommunikation/       ← JSON-Zeilen zum Raspberry Pi
+└─ src/main.cpp            ← Objekte + setup()/loop() + REGELUNGSLOGIK
+Die wichtigsten Design-Entscheidungen
+1. MCP23017 — deine offene Frage. Gelöst über eine kleine IO-Schicht (Io.h). In der Config schreibst du pro Pin einfach, wo er sitzt:
+
+constexpr IoPin HEIZUNG_EG_TASTER   = mcpPin(0);    // Pin 0 am MCP23017
+constexpr IoPin AUFZUG_MOTOR_ENABLE = espPin(26);   // GPIO 26 am ESP32
+Das Modul ruft immer nur io.digitalRead(pin) / io.digitalWrite(pin, ...) — es weiß nicht, ob der Pin am ESP oder am Expander hängt. Umstecken = eine Zeile in Config.h ändern, kein Modul anfassen.
+
+2. Module bekommen Pins per Konstruktor (wie bei eurer Heizung schon angelegt), nur main.cpp kennt Config.h. Dadurch sind Module sauber entkoppelt und parallel entwickelbar.
+
+3. Regelung zentral in main.cpp → regelung() — genau wie du wolltest. Alle 4 Automatik-Regeln stehen dort als kommentierte Blöcke (z. B. dein „Dachfenster OG2 zu, wenn dort geheizt wird"). Die Einzelregelung (Heizungs-Hysterese) steckt im jeweiligen Modul.
+
+4. Heizung hat jetzt zwei Betriebsarten: Taster schaltet zwischen Automatik (Zweipunkt-Hysterese) und „manuell an" um — wie von dir beschrieben.
+
+5. Aufzug als nicht-blockierender Zustandsautomat: Referenzfahrt nach unten, beide Endschalter korrigieren die Endlagen, Etagen über Fahrzeiten, Timeout-Schutz → FEHLER-Zustand bei Blockade.
+
+Mitgefixt (war vorher nicht baubar)
+Config.h vs. config.h (Groß-/Kleinschreibung → wäre auf Linux/CI eures Kollegen kaputtgegangen)
+#include config.h ohne Anführungszeichen in Heizung.cpp
+fehlende LICHT_*-Makros + fehlende lib_deps
+leere DiscoLight-Dateien
+Build verifiziert ✅
+pio run läuft sauber durch (RAM 6.8 %, Flash 24.3 %). Wichtig für dich und deinen Kollegen: Auf deinem Rechner muss der Build mit PIP_USER=0 pio run gestartet werden — sonst bricht die Paket­installation von PlatformIO ab (Can not combine '--user' and '--target'). Das ist ein Umgebungsproblem deiner Installation, nicht des Projekts.
+
+Was als Nächstes ansteht (steht auch in der README §9)
+Echte Sensoren in Sensorik anbinden (Libs in platformio.ini sind schon als Kommentar vorbereitet) — bis dahin könnt ihr dank Simulation die ganze Regelung schon testen.
+Aufzug-Fahrzeiten und Servo-Endlagen einmessen.
+Reale Pin-Belegung gegen euren Schaltplan prüfen (meine Belegung ist ein sinnvoller Startvorschlag, siehe Tabelle in der README).
+JSON-Protokoll mit der Dashboard-Gruppe final abstimmen (Spec steht in README §4).
+Die README erklärt außerdem Schritt für Schritt, wie man ein neues Modul hinzufügt und einen empfohlenen GitHub-Workflow (Feature-Branches + PRs, Modul-Eigentümer), damit ihr euch zu zweit nicht in die Quere kommt.
+
+Womit möchtest du loslegen — z. B. das erste echte Modul (Sensorik anbinden), den Aufzug verfeinern, oder eine Beispiel-Gegenstelle in Python für den Pi, damit ihr das JSON-Protokoll testen könnt?

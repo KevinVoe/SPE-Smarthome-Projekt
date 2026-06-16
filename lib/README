@@ -1,46 +1,27 @@
+Module dieses Projekts
+======================
 
-This directory is intended for project specific (private) libraries.
-PlatformIO will compile them to static libraries and link into the executable file.
+Jedes Steuerungselement ist ein eigenes Modul und liegt in einem EIGENEN
+Unterordner (PlatformIO-Konvention - flache .cpp-Dateien direkt in lib/ werden
+NICHT kompiliert!):
 
-The source code of each library should be placed in a separate directory
-("lib/your_library_name/[Code]").
+    lib/
+      Io/            Abstraktion fuer ESP32- und MCP23017-Pins (Basis fuer alles)
+      Heizung/       Etagenheizung: Taster + Hysterese (LED-simuliert)
+      Aufzug/        Brushed-DC ueber Seilwinde, Zustandsautomat
+      Licht/         NeoPixel-Raumlicht (Ausgabe)
+      DiscoLight/    NeoPixel-Stimmungslicht (Animation)
+      Servoaktor/    Servos am PCA9685 (Dachfenster, Jalousie, Garage)
+      Alarm/         Alarmrelais + Buzzer
+      Sensorik/      Temperatur/Helligkeit/Feuchte (aktuell simuliert)
+      Kommunikation/ JSON-Link zum Raspberry Pi
 
-For example, see the structure of the following example libraries `Foo` and `Bar`:
+Ein neues Modul anlegen (siehe auch ../README.md):
+  1) Ordner lib/MeinModul/ erstellen
+  2) MeinModul.h + MeinModul.cpp anlegen (Konstruktor nimmt Pins/Parameter,
+     dann begin() und update())
+  3) Pins/Parameter in include/Config.h eintragen
+  4) In src/main.cpp Objekt anlegen, in setup() begin(), in loop() update()
 
-|--lib
-|  |
-|  |--Bar
-|  |  |--docs
-|  |  |--examples
-|  |  |--src
-|  |     |- Bar.c
-|  |     |- Bar.h
-|  |  |- library.json (optional. for custom build options, etc) https://docs.platformio.org/page/librarymanager/config.html
-|  |
-|  |--Foo
-|  |  |- Foo.c
-|  |  |- Foo.h
-|  |
-|  |- README --> THIS FILE
-|
-|- platformio.ini
-|--src
-   |- main.c
-
-Example contents of `src/main.c` using Foo and Bar:
-```
-#include <Foo.h>
-#include <Bar.h>
-
-int main (void)
-{
-  ...
-}
-
-```
-
-The PlatformIO Library Dependency Finder will find automatically dependent
-libraries by scanning project source files.
-
-More information about PlatformIO Library Dependency Finder
-- https://docs.platformio.org/page/librarymanager/ldf.html
+Hardwarezugriff IMMER ueber die Io-Schicht (io.digitalRead/Write/pinMode),
+damit egal ist, ob ein Pin am ESP32 oder am MCP23017 haengt.
