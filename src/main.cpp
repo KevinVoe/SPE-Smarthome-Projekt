@@ -1,6 +1,6 @@
 #include <Arduino.h>
+#include "config.h"
 
-#define LED_PIN 13
 // put function declarations here:
 int myFunction(int, int);
 

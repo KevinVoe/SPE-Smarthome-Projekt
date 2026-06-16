@@ -1,6 +1,13 @@
 // config.h
 #pragma once
 
+// ─── Direkte ESP32 GPIOs ───────────────────────────────
+#define PIN_DS18B20     4   // 1-Wire Temperatursensoren
+#define PIN_I2S_BCLK    26  // Audio
+#define PIN_I2S_LRC     25
+#define PIN_I2S_DOUT    27
+#define LED_PIN 13
+
 // ─── I2C Bus ───────────────────────────────────────────
 #define PIN_SDA         21
 #define PIN_SCL         22
@@ -34,8 +41,3 @@
 #define PWM_LED_KUECHE      10
 #define PWM_LED_FLUR        11
 
-// ─── Direkte ESP32 GPIOs ───────────────────────────────
-#define PIN_DS18B20     4   // 1-Wire Temperatursensoren
-#define PIN_I2S_BCLK    26  // Audio
-#define PIN_I2S_LRC     25
-#define PIN_I2S_DOUT    27
