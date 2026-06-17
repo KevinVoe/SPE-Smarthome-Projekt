@@ -65,16 +65,29 @@ constexpr uint32_t AUFZUG_ZEIT_OG1_OG2_MS = 2500;
 constexpr uint32_t AUFZUG_TIMEOUT_MS      = 6000;
 
 // =============================================================================
-//  LICHT  (NeoPixel-Streifen, von der Regelung in main gesteuert)
+//  LICHT  (12V LED-Strips ueber IRLZ44N-MOSFETs, PWM vom ESP32)
+// -----------------------------------------------------------------------------
+//  Dimmstufen (global fuer alle Kanaele):
+//    Stufe 0 = aus         -> Duty-Cycle 0
+//    Stufe 1 = low         -> LOW_BRIGHTNESS_DUTY_CYCLE
+//    Stufe 2 = medium      -> MEDIUM_BRIGHTNESS_DUTY_CYCLE
+//    Stufe 3 = voll        -> 255
+//  Werte 0-255 (analogWrite-Skala).
 // =============================================================================
-constexpr uint8_t  LOW_BRIGHTNESS_DUTY_CYCLE = 30;
-constexpr uint8_t  MEDIUM_BRIGHTNESS_DUTY_CYCLE = 120;
+constexpr uint8_t LOW_BRIGHTNESS_DUTY_CYCLE    = 30;
+constexpr uint8_t MEDIUM_BRIGHTNESS_DUTY_CYCLE = 120;
 
-constexpr IoPin    LICHT_PIR         = mcpPin(3);  // Bewegungsmelder Wohnzimmer
-constexpr int      LICHT_STRIP_PIN   = 5;          // Daten-Pin NeoPixel (ESP32 GPIO)
-constexpr uint16_t LICHT_ANZAHL_LEDS = 12;
-constexpr float    LICHT_DUNKEL_LUX  = 50.0f;      // unter diesem Wert = "dunkel"
-constexpr int      LICHT_STRIP_DG_PIN   = 19;
+//  Anzahl Kanaele (Hardware-Maximum: 6 – softwareseitig fest verdrahtet)
+constexpr uint8_t LICHT_MAX_KANAELE = 6;
+
+//  GPIO-Pins der 6 MOSFET-Gates (nur PWM-faehige Pins des ESP32 verwenden!)
+//  Reihenfolge = Kanal-Index: Kanal 0 -> LICHT_PIN_K0, usw.
+constexpr int LICHT_PIN_K0 = 5;
+constexpr int LICHT_PIN_K1 = 19;
+constexpr int LICHT_PIN_K2 = 23;
+constexpr int LICHT_PIN_K3 = 27;
+constexpr int LICHT_PIN_K4 = 14;
+constexpr int LICHT_PIN_K5 = 12;
 
 // =============================================================================
 //  BESCHATTUNG / DACHFENSTER  (Servos am PCA9685, Kanaele 0..7, 50 Hz)

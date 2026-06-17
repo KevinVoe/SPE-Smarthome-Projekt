@@ -1,4 +1,4 @@
-#include <arduino.h>
+#include <Arduino.h>
 #include "Config.h"
 #include "Io.h"
 
@@ -22,7 +22,7 @@ void loop() {
         }else if(i == 2){
             analogWrite(LICHT_STRIP_DG_PIN, MEDIUM_BRIGHTNESS_DUTY_CYCLE);
             Serial.println("LEDs medium brightness");
-        }else{
+        }else{ 
             analogWrite(LICHT_STRIP_DG_PIN, 255);
             Serial.println("LEDs high brightness");
         }
