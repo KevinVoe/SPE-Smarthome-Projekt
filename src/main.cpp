@@ -1,200 +1,168 @@
 // =============================================================================
-//  main.cpp  –  Orchestrierung & uebergeordnete REGELUNGSLOGIK des Smarthomes
+//  main.cpp  –  Orchestrierung & uebergeordnete Logik des Smarthomes
 // -----------------------------------------------------------------------------
-//  Aufbau:
-//   * Oben werden alle Module/Objekte angelegt (Pins/Parameter aus Config.h).
-//   * setup()  initialisiert IO-Basis (I2C/MCP, PCA9685) und dann die Module.
-//   * loop()   ist kooperativ und NICHT-blockierend: jedes Modul hat update();
-//              KEIN delay() verwenden!
-//   * regelung()        enthaelt die ETAGEN-/MODUL-UEBERGREIFENDEN Automatik-Regeln.
-//   * verarbeiteBefehl() setzt Befehle vom Raspberry Pi um.
-//   * statusSenden()    meldet zyklisch Zustaende ans Dashboard.
+//  AKTUELLER STAND: Simulationsaufbau auf dem Breadboard. Module: Heizung,
+//  Aufzug. Beide sind reine STEUERUNGSKLASSEN - sie lesen NIE selbst einen
+//  Taster/Endschalter aus. Das macht ausschliesslich das Modul "Taster"
+//  (Entprellung), main.cpp wertet die bereinigten Pegel aus und ruft gezielt
+//  die passenden Funktionen der Module auf.
+//
+//  AUFZUG: main.cpp erkennt die Flanke auf den 3 Ruftasten (vorher nicht
+//  gedrueckt, jetzt gedrueckt) und ruft daraufhin aufzug.fahreZu(etage) auf.
+//  Die 3 Endschalter werden bei JEDEM loop()-Durchlauf an aufzug.update()
+//  weitergereicht - der Aufzug haelt selbst Buch, wann er anhalten muss.
 // =============================================================================
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
 
 #include "Config.h"
 #include "Io.h"
-#include "Sensorik.h"
+#include "Taster.h"
 #include "Heizung.h"
 #include "Aufzug.h"
-#include "Licht.h"
-#include "DiscoLight.h"
-#include "Servoaktor.h"
-#include "Alarm.h"
-#include "Kommunikation.h"
 
-// ─── Gemeinsame Treiber ──────────────────────────────────────────────────────
-Adafruit_PWMServoDriver pwm(ADDR_PCA9685);     // Servo-PWM-Treiber (PCA9685)
+// =============================================================================
+//  MODI  –  Reihenfolge, durch die der Modus-Taster jeder Etage durchschaltet
+// =============================================================================
+enum class Modus : uint8_t {
+  HEIZEN = 0,
+  KUEHLEN,
+  FENSTER_JALOUSIE_AUF,
+  FENSTER_JALOUSIE_ZU,
+  AUTOMATIK,
+  ANZAHL
+};
 
 // ─── Module / Objekte ────────────────────────────────────────────────────────
-Sensorik sensorik;
+Taster taster(MODUS_TASTER_EG, MODUS_TASTER_OG1, MODUS_TASTER_OG2,
+              AUFZUG_TASTER_EG, AUFZUG_TASTER_OG1, AUFZUG_TASTER_OG2,
+              AUFZUG_ENDSCHALTER_EG, AUFZUG_ENDSCHALTER_OG1, AUFZUG_ENDSCHALTER_OG2);
 
-Heizung heizungEG (HEIZUNG_EG_TASTER,  HEIZUNG_EG_LED,  HEIZUNG_SOLL_DEFAULT, HEIZUNG_HYSTERESE);
-Heizung heizungOG1(HEIZUNG_OG1_TASTER, HEIZUNG_OG1_LED, HEIZUNG_SOLL_DEFAULT, HEIZUNG_HYSTERESE);
-Heizung heizungOG2(HEIZUNG_OG2_TASTER, HEIZUNG_OG2_LED, HEIZUNG_SOLL_DEFAULT, HEIZUNG_HYSTERESE);
+Heizung heizungEG (HEIZUNG_EG_LED);
+Heizung heizungOG1(HEIZUNG_OG1_LED);
+Heizung heizungOG2(HEIZUNG_OG2_LED);
 
-Aufzug aufzug(AUFZUG_ENDSCHALTER_OBEN, AUFZUG_ENDSCHALTER_UNTEN,
-              AUFZUG_MOTOR_RICHTUNG,   AUFZUG_MOTOR_ENABLE,
-              AUFZUG_ZEIT_EG_OG1_MS,   AUFZUG_ZEIT_OG1_OG2_MS, AUFZUG_TIMEOUT_MS);
+Aufzug aufzug(AUFZUG_MOTOR_STEP, AUFZUG_MOTOR_DIR, AUFZUG_MOTOR_ENABLE,
+              AUFZUG_STEP_INTERVALL_US, AUFZUG_TIMEOUT_MS);
 
-Licht      licht(LICHT_STRIP_PIN, LICHT_ANZAHL_LEDS);
-DiscoLight disco(DISCO_STRIP_PIN, DISCO_ANZAHL_LEDS);
+// ─── aktueller Modus je Etage (Heizung/Kuehlen/...) ──────────────────────────
+Modus modusEG  = Modus::HEIZEN;
+Modus modusOG1 = Modus::HEIZEN;
+Modus modusOG2 = Modus::HEIZEN;
 
-Servoaktor dachfensterOG2(pwm, SERVO_DACHFENSTER_OG2, SERVO_TICK_ZU, SERVO_TICK_AUF);
-Servoaktor dachfensterOG1(pwm, SERVO_DACHFENSTER_OG1, SERVO_TICK_ZU, SERVO_TICK_AUF);
-Servoaktor jalousieEG    (pwm, SERVO_JALOUSIE_EG,     SERVO_TICK_ZU, SERVO_TICK_AUF);
-Servoaktor jalousieOG1   (pwm, SERVO_JALOUSIE_OG1,    SERVO_TICK_ZU, SERVO_TICK_AUF);
-Servoaktor garagentor    (pwm, SERVO_GARAGENTOR,      SERVO_TICK_ZU, SERVO_TICK_AUF);
+// ─── Flankenerkennung: vorheriger bereinigter Pegel, um NEUE Tastendruecke zu
+//     erkennen (vorher false, jetzt true). main.cpp macht das selbst -
+//     Taster liefert nur den aktuellen Pegel.
+// =============================================================================
+bool vorherModusEg  = false;
+bool vorherModusOg1 = false;
+bool vorherModusOg2 = false;
 
-Alarm alarmAnlage(ALARM_RELAIS, ALARM_BUZZER);   // 'alarm' ist eine POSIX-Funktion -> anderer Name
-
-Kommunikation komm(Serial2);   // Link zum Raspberry Pi (UART2). USB-Variante: komm(Serial)
+bool vorherAufzugEg  = false;
+bool vorherAufzugOg1 = false;
+bool vorherAufzugOg2 = false;
 
 // ─── Prototypen ──────────────────────────────────────────────────────────────
-void regelung();
-void verarbeiteBefehl(JsonDocument& doc);
-void statusSenden();
+void modusVerlassen(Modus m, Heizung& heizung);
+void modusBetreten  (Modus m, Heizung& heizung);
+void modusWechseln  (Modus& aktuell, Heizung& heizung);
 
 // =============================================================================
 //  SETUP
 // =============================================================================
 void setup() {
-  Serial.begin(115200);                              // Debug-Konsole (USB)
-  Serial2.begin(COMM_BAUD, SERIAL_8N1, PIN_PI_RX, PIN_PI_TX);  // Link zum Pi
+  Serial.begin(115200);     // Debug-Konsole (USB)
 
-  // Erst die IO-/I2C-Basis, DANN die Module initialisieren.
-  io.begin(PIN_SDA, PIN_SCL, ADDR_MCP23017);
-  pwm.begin();
-  pwm.setPWMFreq(50);                                // 50 Hz fuer Servos
-
-  sensorik.begin();
+  taster.begin();
 
   heizungEG.begin();
   heizungOG1.begin();
   heizungOG2.begin();
 
   aufzug.begin();
-
-  licht.begin();
-  disco.begin();
-
-  dachfensterOG2.begin();
-  dachfensterOG1.begin();
-  jalousieEG.begin();
-  jalousieOG1.begin();
-  garagentor.begin();
-
-  alarmAnlage.begin();
-
-  komm.begin();
-  komm.onBefehl(verarbeiteBefehl);                   // Befehle vom Pi -> Handler
-
-  aufzug.referenzieren();                            // einmal Position suchen
 }
 
 // =============================================================================
 //  LOOP  –  kooperativ, nie blockieren (kein delay()!)
 // =============================================================================
 void loop() {
-  // 1) Sensoren aktualisieren
-  sensorik.update();
+  taster.update();                              // 1x pro loop: alle Eingaenge entprellt einlesen
+  const TasterStatus& s = taster.status();       // bereinigte Pegel, true = ausgeloest/gehalten
 
-  // 2) aktuelle Messwerte in die Regler reichen
-  heizungEG.setIstTemperatur (sensorik.temperatur(0));
-  heizungOG1.setIstTemperatur(sensorik.temperatur(1));
-  heizungOG2.setIstTemperatur(sensorik.temperatur(2));
+  // ── Heizung: Modus-Taster je Etage, Flankenerkennung in main.cpp ──────────
+  if (s.eg  && !vorherModusEg)  modusWechseln(modusEG,  heizungEG);
+  if (s.og1 && !vorherModusOg1) modusWechseln(modusOG1, heizungOG1);
+  if (s.og2 && !vorherModusOg2) modusWechseln(modusOG2, heizungOG2);
 
-  // 3) Module abarbeiten (jedes hat sein eigenes Timing per millis())
-  heizungEG.update();
-  heizungOG1.update();
-  heizungOG2.update();
-  aufzug.update();
-  licht.update();
-  disco.update();
-  alarmAnlage.update();
+  vorherModusEg  = s.eg;
+  vorherModusOg1 = s.og1;
+  vorherModusOg2 = s.og2;
 
-  // 4) eingehende Befehle vom Pi
-  komm.update();
+  // ── Aufzug: Ruftasten je Etage, Flankenerkennung in main.cpp ──────────────
+  if (s.aufzugEg  && !vorherAufzugEg)  aufzug.fahreZu(Aufzug::Etage::EG);
+  if (s.aufzugOg1 && !vorherAufzugOg1) aufzug.fahreZu(Aufzug::Etage::OG1);
+  if (s.aufzugOg2 && !vorherAufzugOg2) aufzug.fahreZu(Aufzug::Etage::OG2);
 
-  // 5) uebergeordnete Regelungslogik / Automatik-Regeln
-  regelung();
+  vorherAufzugEg  = s.aufzugEg;
+  vorherAufzugOg1 = s.aufzugOg1;
+  vorherAufzugOg2 = s.aufzugOg2;
 
-  // 6) Status zyklisch ans Dashboard senden
-  statusSenden();
+  // Endschalter werden bei JEDEM Durchlauf weitergereicht, nicht nur bei
+  // einer Flanke - der Aufzug muss laufend pruefen, ob er anhalten muss.
+  aufzug.update(s.endschalterEg, s.endschalterOg1, s.endschalterOg2);
 }
 
 // =============================================================================
-//  REGELUNGSLOGIK  –  ETAGEN-/MODUL-UEBERGREIFENDE Regeln.
-//  (Einzelregelung wie die Heizungs-Hysterese steckt im jeweiligen Modul.)
-//  Neue Automatik-Regeln einfach hier als weiteren Block ergaenzen.
+//  MODUS-WECHSEL (Heizung)  –  exklusiv: alter Modus wird beendet, neuer
+//  gestartet. Hier werden GEZIELT die Funktionen der einzelnen Module
+//  aufgerufen.
 // =============================================================================
-void regelung() {
-  // ── Regel 1: Dachfenster im obersten Geschoss schliessen, wenn dort geheizt wird
-  if (heizungOG2.istAn()) {
-    dachfensterOG2.zu();
-  }
+void modusWechseln(Modus& aktuell, Heizung& heizung) {
+  modusVerlassen(aktuell, heizung);
 
-  // ── Regel 2: Licht nur bei Bewegung UND Dunkelheit
-  bool bewegung = (io.digitalRead(LICHT_PIR) == HIGH);
-  bool dunkel   = (sensorik.helligkeit() < LICHT_DUNKEL_LUX);
-  if (bewegung && dunkel) licht.an();
-  else if (!bewegung)     licht.aus();
+  uint8_t naechster = (static_cast<uint8_t>(aktuell) + 1) % static_cast<uint8_t>(Modus::ANZAHL);
+  aktuell = static_cast<Modus>(naechster);
 
-  // ── Regel 3: Alarm bei Tuer-/Fensterkontakt, wenn scharf geschaltet
-  bool tuerOffen    = (io.digitalRead(REED_TUER_EG)    == HIGH);
-  bool fensterOffen = (io.digitalRead(REED_FENSTER_OG) == HIGH);
-  if (tuerOffen || fensterOffen) alarmAnlage.ausloesen();
-
-  // ── Regel 4: Beschattung nach Helligkeit (Beispiel: Jalousie EG)
-  if (sensorik.helligkeit() > BESCHATTUNG_HELL_LUX) jalousieEG.zu();
-  else                                              jalousieEG.auf();
-
-  // TODO: weitere Regeln hier ergaenzen.
+  modusBetreten(aktuell, heizung);
 }
 
-// =============================================================================
-//  BEFEHLE vom Raspberry Pi  (JSON-Zeilen, siehe README -> "Protokoll")
-//  Beispiel:  {"cmd":"heizung","raum":"og2","set":1}
-// =============================================================================
-void verarbeiteBefehl(JsonDocument& doc) {
-  const char* cmd = doc["cmd"] | "";
-
-  if (strcmp(cmd, "heizung") == 0) {
-    const char* raum = doc["raum"] | "";
-    bool an = doc["set"] | false;
-    Heizung* h = nullptr;
-    if      (strcmp(raum, "eg")  == 0) h = &heizungEG;
-    else if (strcmp(raum, "og1") == 0) h = &heizungOG1;
-    else if (strcmp(raum, "og2") == 0) h = &heizungOG2;
-    if (h) { if (an) h->einschaltenManuell(); else h->setModus(HeizModus::AUTO); }
+void modusBetreten(Modus m, Heizung& heizung) {
+  switch (m) {
+    case Modus::HEIZEN:
+      heizung.setState(true);
+      break;
+    case Modus::KUEHLEN:
+      // TODO: kuehlung.setState(true), sobald das Modul "Kuehlung" existiert
+      break;
+    case Modus::FENSTER_JALOUSIE_AUF:
+      // TODO: fenster.setState(true); jalousie.setState(true);
+      break;
+    case Modus::FENSTER_JALOUSIE_ZU:
+      // TODO: fenster.setState(false); jalousie.setState(false);
+      break;
+    case Modus::AUTOMATIK:
+      // TODO: automatik-Logik aktivieren
+      break;
+    default:
+      break;
   }
-  else if (strcmp(cmd, "aufzug") == 0) {
-    int etage = doc["etage"] | 0;
-    aufzug.fahreZu((Aufzug::Etage)etage);
-  }
-  else if (strcmp(cmd, "disco") == 0) {
-    bool an = doc["set"] | false;
-    if (an) disco.an(); else disco.aus();
-  }
-  else if (strcmp(cmd, "alarm") == 0) {
-    bool scharf = doc["set"] | false;
-    if (scharf) alarmAnlage.scharfschalten(); else alarmAnlage.entschaerfen();
-  }
-  // TODO: weitere Befehle ergaenzen (jalousie, dachfenster, garage, licht, ...).
 }
 
-// =============================================================================
-//  STATUS an den Pi  (nur alle TAKT_STATUS_SENDEN_MS, nicht-blockierend)
-// =============================================================================
-void statusSenden() {
-  static uint32_t letzt = 0;
-  if (millis() - letzt < TAKT_STATUS_SENDEN_MS) return;
-  letzt = millis();
-
-  komm.sendeStatus("temp_eg",      sensorik.temperatur(0));
-  komm.sendeStatus("heizung_og2",  heizungOG2.istAn());
-  komm.sendeStatus("aufzug_etage", (float)aufzug.etage());
-  // TODO: weitere Statuswerte ergaenzen.
+void modusVerlassen(Modus m, Heizung& heizung) {
+  switch (m) {
+    case Modus::HEIZEN:
+      heizung.setState(false);
+      break;
+    case Modus::KUEHLEN:
+      // TODO: kuehlung.setState(false);
+      break;
+    case Modus::FENSTER_JALOUSIE_AUF:
+    case Modus::FENSTER_JALOUSIE_ZU:
+      // TODO: ggf. nichts zu tun
+      break;
+    case Modus::AUTOMATIK:
+      // TODO: Automatik-Logik deaktivieren
+      break;
+    default:
+      break;
+  }
 }
