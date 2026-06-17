@@ -1,55 +1,34 @@
 // =============================================================================
-//  Heizung  –  eine Etagenheizung (LED-simuliert)
+//  Heizung  –  reine STEUERUNGSKLASSE fuer eine Etagenheizung (LED-simuliert)
 // -----------------------------------------------------------------------------
-//  Zwei Betriebsarten:
-//   * AUTO        : Zweipunkt-Regelung (Hysterese) um die Solltemperatur
-//   * MANUELL_AN  : per Taster fest eingeschaltet (Regelung wird ignoriert)
-//  Der Taster schaltet zwischen beiden Betriebsarten um.
+//  WICHTIG: Dieses Modul wertet KEINEN Taster aus und kennt KEINE Modi!
+//  Es bietet ausschliesslich Funktionen, um die Heizung gezielt ein- oder
+//  auszuschalten. Welcher Taster wann welchen Modus ausloest (Heizen/Kuehlen/
+//  Fenster auf/Fenster zu/Automatik), entscheidet AUSSCHLIESSLICH main.cpp -
+//  der Taster gehoert keinem einzelnen Modul, sondern schaltet zwischen
+//  mehreren Modulen um.
 //
-//  Dieses Modul dient zugleich als VORLAGE fuer weitere Module:
-//  Konstruktor nimmt Pins/Parameter entgegen, begin()/update() werden aus
-//  main aufgerufen, Hardwarezugriff laeuft ueber die Io-Schicht.
+//  main.cpp ruft z.B. heizungEG.setState(true) auf, sobald der Taster-Modus
+//  fuer die EG auf "Heizen" steht - und heizungEG.setState(false), sobald ein
+//  anderer Modus aktiv wird.
 // =============================================================================
 #pragma once
 #include <Arduino.h>
 #include "Io.h"
 
-enum class HeizModus : uint8_t {
-  AUTO,        // Zweipunkt-Regelung ueber Soll +/- Hysterese
-  MANUELL_AN   // fest eingeschaltet
-};
-
 class Heizung {
 public:
-  Heizung(IoPin tasterPin, IoPin ledPin, float sollTemp, float hysterese);
+  Heizung(IoPin ledPin);
 
   void begin();
-  void update();                       // zyklisch aus loop() aufrufen
 
-  void setIstTemperatur(float t);      // aktuelle Raumtemperatur reinreichen
-  void setSoll(float t);
-  void setModus(HeizModus m);
-  void einschaltenManuell();           // z.B. vom Dashboard
+  void setState(bool an);     // EINZIGER Weg, die Heizung zu schalten
+  void einschalten()  { setState(true); }
+  void ausschalten()  { setState(false); }
 
-  bool      istAn()  const { return _heizungAn; }
-  float     soll()   const { return _soll; }
-  HeizModus modus()  const { return _modus; }
+  bool istAn() const { return _heizungAn; }
 
 private:
-  void _tasterAuswerten();
-  void _regeln();
-  void _schalten(bool an);
-
-  IoPin _tasterPin;
   IoPin _ledPin;
-  float _soll;
-  float _hysterese;
-  float _ist = NAN;                    // noch kein Messwert vorhanden
-  HeizModus _modus = HeizModus::AUTO;
   bool  _heizungAn = false;
-
-  // Tasterentprellung
-  int           _letzterTaster   = HIGH;
-  unsigned long _letzteAenderung = 0;
-  static constexpr unsigned long _entprellMs = 50;
 };

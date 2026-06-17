@@ -1,89 +1,85 @@
 #include "Aufzug.h"
 
-Aufzug::Aufzug(IoPin so, IoPin su, IoPin r, IoPin e,
-               uint32_t z1, uint32_t z2, uint32_t to)
-  : _swOben(so), _swUnten(su), _richtung(r), _enable(e),
-    _zeitEgOg1(z1), _zeitOg1Og2(z2), _timeout(to) {}
+Aufzug::Aufzug(IoPin pinStep, IoPin pinDir, IoPin pinEnable, uint32_t stepIntervalUs,
+               uint32_t timeoutMs)
+  : _pinStep(pinStep), _pinDir(pinDir), _pinEnable(pinEnable),
+    _stepIntervalUs(stepIntervalUs), _timeoutMs(timeoutMs) {}
 
 void Aufzug::begin() {
-  io.pinMode(_swOben,  INPUT_PULLUP);   // Endschalter gegen GND -> gedrueckt = LOW
-  io.pinMode(_swUnten, INPUT_PULLUP);
-  io.pinMode(_richtung, OUTPUT);
-  io.pinMode(_enable,   OUTPUT);
-  _motorStop();
-}
-
-bool Aufzug::_obenGedrueckt()  { return io.digitalRead(_swOben)  == LOW; }
-bool Aufzug::_untenGedrueckt() { return io.digitalRead(_swUnten) == LOW; }
-
-void Aufzug::_motorAuf()  { io.digitalWrite(_richtung, HIGH); io.digitalWrite(_enable, HIGH); }
-void Aufzug::_motorAb()   { io.digitalWrite(_richtung, LOW);  io.digitalWrite(_enable, HIGH); }
-void Aufzug::_motorStop() { io.digitalWrite(_enable, LOW); }
-
-uint32_t Aufzug::_fahrzeit(Etage von, Etage nach) {
-  // Summe der Teilstrecken zwischen den Etagen.
-  int a = (von < nach) ? (int)von : (int)nach;
-  int b = (von < nach) ? (int)nach : (int)von;
-  uint32_t zeit = 0;
-  for (int e = a; e < b; ++e) {
-    zeit += (e == EG) ? _zeitEgOg1 : _zeitOg1Og2;
-  }
-  return zeit;
-}
-
-void Aufzug::referenzieren() {
-  // Nach unten fahren bis zum unteren Endschalter = EG (Nullpunkt).
-  _zustand    = Zustand::REFERENZFAHRT;
-  _fahrtStart = millis();
-  _motorAb();
+  io.pinMode(_pinStep,   OUTPUT);
+  io.pinMode(_pinDir,    OUTPUT);
+  io.pinMode(_pinEnable, OUTPUT);
+  _motorAus();   // Treiber deaktiviert starten (kein Strom auf den Motor)
 }
 
 void Aufzug::fahreZu(Etage ziel) {
-  if (_zustand == Zustand::FEHLER)         return;            // erst quittieren
-  if (_zustand == Zustand::UNREFERENZIERT) { referenzieren(); return; }
-  if (_zustand != Zustand::BEREIT)         return;            // Fahrt laeuft noch
-  if (ziel == _aktuelleEtage)              return;
+  if (_zustand == Zustand::FAEHRT_AUF || _zustand == Zustand::FAEHRT_AB) return;  // schon in Fahrt
+  if (_zustand == Zustand::FEHLER) return;                                       // erst quittieren
+  if (ziel == _aktuelleEtage) return;                                            // schon da
 
-  _zielEtage  = ziel;
-  _fahrtDauer = _fahrzeit(_aktuelleEtage, ziel);
-  _fahrtStart = millis();
-  if (ziel > _aktuelleEtage) { _zustand = Zustand::FAHRT_AUF; _motorAuf(); }
-  else                       { _zustand = Zustand::FAHRT_AB;  _motorAb();  }
+  _zielEtage    = ziel;
+  _fahrtStartMs = millis();
+
+  bool richtungAufwaerts = (static_cast<uint8_t>(ziel) > static_cast<uint8_t>(_aktuelleEtage));
+  _motorEin(richtungAufwaerts);
+  _zustand = richtungAufwaerts ? Zustand::FAEHRT_AUF : Zustand::FAEHRT_AB;
 }
 
-void Aufzug::update() {
-  uint32_t jetzt = millis();
+void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2) {
+  if (_zustand != Zustand::FAEHRT_AUF && _zustand != Zustand::FAEHRT_AB) return;
 
-  switch (_zustand) {
-    case Zustand::REFERENZFAHRT:
-      if (_untenGedrueckt()) {                       // Nullpunkt erreicht
-        _motorStop(); _aktuelleEtage = EG; _zustand = Zustand::BEREIT;
-      } else if (jetzt - _fahrtStart > _timeout) {   // Schalter nie erreicht
-        _motorStop(); _zustand = Zustand::FEHLER;
-      }
-      break;
-
-    case Zustand::FAHRT_AUF:
-      if (_obenGedrueckt()) {                         // Endlage oben = OG2
-        _motorStop(); _aktuelleEtage = OG2; _zustand = Zustand::BEREIT;
-      } else if (jetzt - _fahrtStart >= _fahrtDauer) {// Fahrzeit erreicht
-        _motorStop(); _aktuelleEtage = _zielEtage; _zustand = Zustand::BEREIT;
-      } else if (jetzt - _fahrtStart > _timeout) {    // Sicherheit
-        _motorStop(); _zustand = Zustand::FEHLER;
-      }
-      break;
-
-    case Zustand::FAHRT_AB:
-      if (_untenGedrueckt()) {                         // Endlage unten = EG
-        _motorStop(); _aktuelleEtage = EG; _zustand = Zustand::BEREIT;
-      } else if (jetzt - _fahrtStart >= _fahrtDauer) {
-        _motorStop(); _aktuelleEtage = _zielEtage; _zustand = Zustand::BEREIT;
-      } else if (jetzt - _fahrtStart > _timeout) {
-        _motorStop(); _zustand = Zustand::FEHLER;
-      }
-      break;
-
-    default:   // UNREFERENZIERT / BEREIT / FEHLER: nichts zu tun
-      break;
+  // ── Sicherheit: Timeout - falls das Ziel nicht in der erwarteten Zeit
+  //    erreicht wird (Endschalter defekt, Seil blockiert, Motor blockiert).
+  if (millis() - _fahrtStartMs > _timeoutMs) {
+    _motorAus();
+    _zustand = Zustand::FEHLER;
+    return;
   }
+
+  // ── Zielerreichung: der zur Zieletage passende Endschalter ist die
+  //    EINZIGE Wahrheit - keine Schrittzaehlung.
+  if (_endschalterFuer(_zielEtage, endschalterEg, endschalterOg1, endschalterOg2)) {
+    _motorAus();
+    _aktuelleEtage = _zielEtage;
+    _zustand       = Zustand::STEHT;
+    return;
+  }
+
+  // ── Motor weitertakten (nicht-blockierend, kein delay()).
+  unsigned long jetztUs = micros();
+  if (jetztUs - _letzterStepUs >= _stepIntervalUs) {
+    _letzterStepUs = jetztUs;
+    io.digitalWrite(_pinStep, HIGH);
+    io.digitalWrite(_pinStep, LOW);   // ein STEP-Puls = ein Vollschritt
+  }
+}
+
+void Aufzug::fehlerQuittieren() {
+  if (_zustand == Zustand::FEHLER) {
+    _motorAus();
+    _zustand = Zustand::STEHT;
+    // Hinweis: _aktuelleEtage bleibt auf dem letzten bekannten Stand stehen.
+    // Eine Referenzfahrt (z.B. immer erst Richtung EG, bis Endschalter EG
+    // ausloest) kann hier spaeter ergaenzt werden, falls die Position nach
+    // einem Fehler nicht mehr sicher bekannt ist.
+  }
+}
+
+void Aufzug::_motorEin(bool richtungAufwaerts) {
+  io.digitalWrite(_pinDir, richtungAufwaerts ? HIGH : LOW);
+  io.digitalWrite(_pinEnable, LOW);   // A4988/DRV8825: ENABLE aktiv LOW
+  _letzterStepUs = micros();
+}
+
+void Aufzug::_motorAus() {
+  io.digitalWrite(_pinEnable, HIGH);  // Treiber deaktivieren, kein Motorstrom
+}
+
+bool Aufzug::_endschalterFuer(Etage e, bool eg, bool og1, bool og2) const {
+  switch (e) {
+    case Etage::EG:  return eg;
+    case Etage::OG1: return og1;
+    case Etage::OG2: return og2;
+  }
+  return false;
 }
