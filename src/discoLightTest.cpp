@@ -28,9 +28,6 @@ static bool vorherTaster = false;
 void setup() {
   Serial.begin(115200);
  
-  // Optionalen Taster als Eingang konfigurieren
-  pinMode(MODUS_TASTER_EG.pin, INPUT_PULLUP);
- 
   disco.begin();
   disco.an();           // Disco sofort starten
  
@@ -42,21 +39,8 @@ void setup() {
 //  LOOP  –  nie blockieren!
 // =============================================================================
 void loop() {
-  // ── Taster auslesen (LOW = gedrueckt wegen INPUT_PULLUP) ──────────────────
-  bool tasterJetzt = (digitalRead(MODUS_TASTER_EG.pin) == LOW);
- 
-  // ── Flanke: nur beim Loslassen toggeln (sauberer als beim Druecken) ───────
-  if (!tasterJetzt && vorherTaster) {
-    if (disco.istAn()) {
-      disco.aus();
-      Serial.println("Disco: AUS");
-    } else {
-      disco.an();
-      Serial.println("Disco: AN");
-    }
-  }
-  vorherTaster = tasterJetzt;
  
   // ── DiscoLight ticken lassen – das ist der einzige Pflichtaufruf ──────────
   disco.update();
+  delay(8);
 }

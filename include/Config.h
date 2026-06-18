@@ -78,7 +78,7 @@ constexpr IoPin ALARM_BUZZER     = mcpPin(12);
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
 // =============================================================================
 constexpr int      DISCO_STRIP_PIN   = 18;
-constexpr uint16_t DISCO_ANZAHL_LEDS = 8;
+constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
 
 // =============================================================================
 //  ZEITTAKTE / ABTASTRATEN  (alles nicht-blockierend, millis-basiert)
