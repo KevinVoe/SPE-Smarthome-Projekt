@@ -1,31 +1,46 @@
+// =============================================================================
+//  ledDriver.cpp  –  Testprogramm fuer die PWM-MOSFET-Ansteuerung
+// -----------------------------------------------------------------------------
+//  Rotiert alle 6 Kanaele nacheinander durch alle 4 Dimmstufen (0-3).
+//  Gibt den aktuellen Zustand per Serial aus.
+//  Nutzt die Licht-Klasse – kein direktes analogWrite mehr.
+// =============================================================================
 #include <Arduino.h>
 #include "Config.h"
-#include "Io.h"
+#include "Licht.h"
 
-//Ziel des Programms: Testen der PWM Mosfet ansteuerung der 12V LED Strips. Es sollen variable PWM duty cycles rotiert werden zum testen
+const int lichtPins[LICHT_MAX_KANAELE] = {
+    LICHT_PIN_K0, LICHT_PIN_K1, LICHT_PIN_K2,
+    LICHT_PIN_K3, LICHT_PIN_K4, LICHT_PIN_K5
+};
+Licht licht(lichtPins);
 
 void setup() {
-    Serial.begin(115200);                              // Debug-Konsole (USB)
-    pinMode(LICHT_STRIP_DG_PIN, OUTPUT);
-
+    Serial.begin(115200);
+    licht.begin();
+    Serial.println("LED-Treiber gestartet. Teste alle 6 Kanaele...");
 }
 
 void loop() {
-    for (int i = 0; i <= 3; i ++) {
-        if(i == 0 ){
-            //analog write beenden
-            analogWrite(LICHT_STRIP_DG_PIN, 0);
-            Serial.println("LEDs aus");
-        }else if(i == 1){
-            analogWrite(LICHT_STRIP_DG_PIN, LOW_BRIGHTNESS_DUTY_CYCLE);
-            Serial.println("LEDs low brightness");
-        }else if(i == 2){
-            analogWrite(LICHT_STRIP_DG_PIN, MEDIUM_BRIGHTNESS_DUTY_CYCLE);
-            Serial.println("LEDs medium brightness");
-        }else{ 
-            analogWrite(LICHT_STRIP_DG_PIN, 255);
-            Serial.println("LEDs high brightness");
+    for (uint8_t kanal = 0; kanal < LICHT_MAX_KANAELE; kanal++) {
+        for (uint8_t stufe = 0; stufe <= 3; stufe++) {
+            licht.alleAus();
+            licht.setKanal(kanal, stufe);
+
+            Serial.print("Kanal ");
+            Serial.print(kanal);
+            Serial.print("  Stufe ");
+            Serial.print(stufe);
+            Serial.print("  (");
+            switch (stufe) {
+                case 0: Serial.print("aus");    break;
+                case 1: Serial.print("low");    break;
+                case 2: Serial.print("medium"); break;
+                case 3: Serial.print("voll");   break;
+            }
+            Serial.println(")");
+
+            delay(500);
         }
-        delay(2000);
     }
 }

@@ -82,12 +82,12 @@ constexpr uint8_t LICHT_MAX_KANAELE = 6;
 
 //  GPIO-Pins der 6 MOSFET-Gates (nur PWM-faehige Pins des ESP32 verwenden!)
 //  Reihenfolge = Kanal-Index: Kanal 0 -> LICHT_PIN_K0, usw.
-constexpr int LICHT_PIN_K0 = 5;
+constexpr int LICHT_PIN_K0 = 18;
 constexpr int LICHT_PIN_K1 = 19;
-constexpr int LICHT_PIN_K2 = 23;
-constexpr int LICHT_PIN_K3 = 27;
-constexpr int LICHT_PIN_K4 = 14;
-constexpr int LICHT_PIN_K5 = 12;
+constexpr int LICHT_PIN_K2 = 21;
+constexpr int LICHT_PIN_K3 = 22;
+constexpr int LICHT_PIN_K4 = 23;
+constexpr int LICHT_PIN_K5 = 5;
 
 // =============================================================================
 //  BESCHATTUNG / DACHFENSTER  (Servos am PCA9685, Kanaele 0..7, 50 Hz)
