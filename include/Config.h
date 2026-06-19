@@ -85,16 +85,17 @@ constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
 // =============================================================================
 //  ZEITTAKTE / ABTASTRATEN  (alles nicht-blockierend, millis-basiert)
 // =============================================================================
-constexpr uint32_t TAKT_TASTER_ENTPRELL_MS = 50;    // Tasterentprellung
+/*constexpr uint32_t TAKT_TASTER_ENTPRELL_MS = 50;    // Tasterentprellung
 constexpr uint32_t TAKT_SENSOR_MS          = 1000;  // Sensoren einlesen
 constexpr uint32_t TAKT_STATUS_SENDEN_MS   = 1000;  // Status an den Pi senden
 constexpr IoPin AUFZUG_TASTER_EG  = espPin(19);
 constexpr IoPin AUFZUG_TASTER_OG1 = espPin(21);
 constexpr IoPin AUFZUG_TASTER_OG2 = espPin(22);
+*/
 
 //  AUFZUG  –  Ruftasten je Etage + Endschalter je Etage + Motortreiber
 //  (A4988/DRV8825-Familie: STEP/DIR/ENABLE, Vollschritt, kein Microstepping)
-constexpr IoPin AUFZUG_ENDSCHALTER_EG  = espPin(23);
+/*constexpr IoPin AUFZUG_ENDSCHALTER_EG  = espPin(23);
 constexpr IoPin AUFZUG_ENDSCHALTER_OG1 = espPin(25);
 constexpr IoPin AUFZUG_ENDSCHALTER_OG2 = espPin(26);
 
@@ -104,6 +105,7 @@ constexpr IoPin AUFZUG_MOTOR_ENABLE = espPin(33);
 
 constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;    // Zeit zwischen 2 STEP-Pulsen (Tempo)
 constexpr uint32_t AUFZUG_TIMEOUT_MS        = 8000;   // Sicherheits-Abschaltung
+*/
 
 // ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
 //  Fuer weitere Module (Kuehlung, Fenster, Jalousie) hier ergaenzen, z.B.:
