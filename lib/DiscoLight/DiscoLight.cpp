@@ -45,7 +45,7 @@ void DiscoLight::begin() {
   // Hinweis: Falls DISCO_STRIP_PIN != 18 ist, den Wert hier anpassen ODER
   //          DISCO_STRIP_PIN direkt als Template-Argument verwenden:
   //          FastLED.addLeds<WS2813, DISCO_STRIP_PIN, GRB>(_leds, _anzahl)
-  FastLED.addLeds<WS2813, 18, GRB>(_leds, _anzahl);
+  FastLED.addLeds<WS2813, 0, GRB>(_leds, _anzahl);
   FastLED.setBrightness(DISCO_HELL_MAX);
   FastLED.clear(true);
  

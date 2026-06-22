@@ -44,6 +44,7 @@ void tageszeitRegeln(const Kontext& k, Soll& s) {
     setze(s.licht[2], 1, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 1, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 1, PRIO_ZEIT_BASIS);
+    setze(s.disco, 0, PRIO_ZEIT_BASIS);
 }
 else if (tag) {
     setze(s.licht[0], 0, PRIO_ZEIT_BASIS);
@@ -51,6 +52,7 @@ else if (tag) {
     setze(s.licht[2], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+    setze(s.disco, 0, PRIO_ZEIT_BASIS);
 }
 else if (abend) {
     setze(s.licht[0], 2, PRIO_ZEIT_BASIS);
@@ -58,6 +60,7 @@ else if (abend) {
     setze(s.licht[2], 3, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 3, PRIO_ZEIT_BASIS);
+    setze(s.disco, 1, PRIO_ZEIT_BASIS);
 }
 else if (nacht) {
     setze(s.licht[0], 1, PRIO_ZEIT_BASIS);
@@ -65,6 +68,7 @@ else if (nacht) {
     setze(s.licht[2], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+    setze(s.disco, 1, PRIO_ZEIT_BASIS);
 }
 
   // Sperre (schlaegt Sensor): nachts bleiben ALLE Jalousien zu.

@@ -11,6 +11,7 @@
 #include "Regelung.h"
 #include "Config.h"
 #include "Licht.h"
+#include "DiscoLight.h"
 
 // Persistenter Zustand ZWISCHEN den Loops (der Soll wird jede Loop neu gebaut).
 // Die Modus-Taster schalten diesen Wert spaeter per Flankenerkennung weiter.
@@ -19,6 +20,8 @@ const int lichtPins[LICHT_MAX_KANAELE] = {
     LICHT_PIN_K3, LICHT_PIN_K4, LICHT_PIN_K5
 };
 Licht licht(lichtPins);
+
+DiscoLight disco(DISCO_STRIP_PIN, DISCO_ANZAHL_LEDS);
 
 KlimaModus klimaModus[ANZ_ETAGEN] = {
   KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK
@@ -34,6 +37,7 @@ void setup() {
   // TODO: io.begin(...), pwm.begin(), und alle Modul-begin() aufrufen,
   //       sobald die Module hier verdrahtet werden.
   licht.begin();
+  disco.begin();
 }
 
 void loop() {
@@ -77,9 +81,25 @@ void loop() {
 //    io.digitalWrite(KLIMAANLAGE_PIN, s.klimaanlage.wert);
 // -----------------------------------------------------------------------------
 void anwenden(const Soll& s) {
+  
+  static uint8_t letzteLichtStufe[LICHT_MAX_KANAELE] = {};
   for (uint8_t e = 0; e < LICHT_MAX_KANAELE; e++) {
-    licht.setKanal(e, s.licht[e].wert);
+    uint8_t neueStufe = (uint8_t)s.licht[e].wert;
+    if (neueStufe != letzteLichtStufe[e]) {
+      licht.setKanal(e, neueStufe);
+      letzteLichtStufe[e] = neueStufe;
+    }
   }
+
+  static uint8_t letzterDiscoStatus = 0;
+  uint8_t neuerDiscoStatus = (uint8_t)s.disco.wert;
+  if (neuerDiscoStatus == 1 && letzterDiscoStatus == 0) {
+    disco.an();
+  } else if (neuerDiscoStatus == 0 && letzterDiscoStatus == 1) {
+    disco.aus();
+  }
+  letzterDiscoStatus = neuerDiscoStatus;
+  disco.update();
 }
 
 // Kompakte Statuszeile zum Mitlesen, solange noch keine Hardware dranhaengt.
