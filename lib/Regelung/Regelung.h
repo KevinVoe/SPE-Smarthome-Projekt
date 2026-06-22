@@ -24,7 +24,7 @@ constexpr uint8_t PRIO_HAND        = 100;  // Handeingriff (Etagen-Taster)
 
 // ─── Regelungs-Parameter ─────────────────────────────────────────────────────
 //  TODO: bei Bedarf nach include/Config.h verschieben (zentrale Tuning-Stelle).
-constexpr uint32_t TAG_LAENGE_MS   = 600000;   // 1 simulierter Tag = 10 min real
+constexpr uint32_t TAG_LAENGE_MS   = 60000;   // 1 simulierter Tag = 10 min real
 constexpr float    SOLL_TEMP_TAG   = 21.0f;    // °C Sollwert tagsueber
 constexpr float    SOLL_TEMP_NACHT = 18.0f;    // °C Sollwert nachts
 constexpr float    HYSTERESE       = 0.5f;     // °C +/- um den Sollwert

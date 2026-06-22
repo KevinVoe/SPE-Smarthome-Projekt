@@ -9,9 +9,17 @@
 // =============================================================================
 #include <Arduino.h>
 #include "Regelung.h"
+#include "Config.h"
+#include "Licht.h"
 
 // Persistenter Zustand ZWISCHEN den Loops (der Soll wird jede Loop neu gebaut).
 // Die Modus-Taster schalten diesen Wert spaeter per Flankenerkennung weiter.
+const int lichtPins[LICHT_MAX_KANAELE] = {
+    LICHT_PIN_K0, LICHT_PIN_K1, LICHT_PIN_K2,
+    LICHT_PIN_K3, LICHT_PIN_K4, LICHT_PIN_K5
+};
+Licht licht(lichtPins);
+
 KlimaModus klimaModus[ANZ_ETAGEN] = {
   KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK
 };
@@ -25,6 +33,7 @@ void setup() {
   Serial.println("\n[Regelung] Grundgeruest gestartet.");
   // TODO: io.begin(...), pwm.begin(), und alle Modul-begin() aufrufen,
   //       sobald die Module hier verdrahtet werden.
+  licht.begin();
 }
 
 void loop() {
@@ -43,11 +52,11 @@ void loop() {
   // ── 2) Soll bilden: Schichten SICHTBAR nacheinander (Prio entscheidet) ─────
   Soll soll;                       // frisch -> alle Felder Default (0)
   tageszeitRegeln(k, soll);
-  sensorRegeln(k, soll);
-  handRegeln(k, soll);
+  //sensorRegeln(k, soll);
+  //handRegeln(k, soll);
 
   // ── 3) Konflikte aufloesen ─────────────────────────────────────────────────
-  interlocks(soll);
+  //interlocks(soll);
 
   // ── 4) Anwenden ────────────────────────────────────────────────────────────
   anwenden(soll);
@@ -68,7 +77,9 @@ void loop() {
 //    io.digitalWrite(KLIMAANLAGE_PIN, s.klimaanlage.wert);
 // -----------------------------------------------------------------------------
 void anwenden(const Soll& s) {
-  (void)s;   // noch nichts verdrahtet
+  for (uint8_t e = 0; e < LICHT_MAX_KANAELE; e++) {
+    licht.setKanal(e, s.licht[e].wert);
+  }
 }
 
 // Kompakte Statuszeile zum Mitlesen, solange noch keine Hardware dranhaengt.

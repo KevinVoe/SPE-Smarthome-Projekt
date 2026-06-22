@@ -1,4 +1,5 @@
 #include "Regelung.h"
+#include "Config.h"
 
 // =============================================================================
 //  Tageszeit-Helfer
@@ -32,22 +33,50 @@ float sollTemperatur(Phase p) {
 // =============================================================================
 void tageszeitRegeln(const Kontext& k, Soll& s) {
   bool abendNacht = (k.phase == Phase::ABEND || k.phase == Phase::NACHT);
+  bool morgen     = (k.phase == Phase::MORGEN);
+  bool tag        = (k.phase == Phase::TAG);
+  bool abend      = (k.phase == Phase::ABEND);
+  bool nacht      = (k.phase == Phase::NACHT);
 
-  // Basis: Etagenlicht abends/nachts gedimmt an, Aussenlicht abends an.
-  for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
-    setze(s.licht[e], abendNacht ? 1 : 0, PRIO_ZEIT_BASIS);
-  setze(s.licht[3], abendNacht ? 2 : 0, PRIO_ZEIT_BASIS);   // Terrasse
-  setze(s.licht[4], abendNacht ? 2 : 0, PRIO_ZEIT_BASIS);   // Eingang
+ if (morgen) {
+    setze(s.licht[0], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[1], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[2], 1, PRIO_ZEIT_BASIS);
+    setze(s.licht[3], 1, PRIO_ZEIT_BASIS);
+    setze(s.licht[4], 1, PRIO_ZEIT_BASIS);
+}
+else if (tag) {
+    setze(s.licht[0], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[1], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[2], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+}
+else if (abend) {
+    setze(s.licht[0], 2, PRIO_ZEIT_BASIS);
+    setze(s.licht[1], 3, PRIO_ZEIT_BASIS);
+    setze(s.licht[2], 3, PRIO_ZEIT_BASIS);
+    setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[4], 3, PRIO_ZEIT_BASIS);
+}
+else if (nacht) {
+    setze(s.licht[0], 1, PRIO_ZEIT_BASIS);
+    setze(s.licht[1], 1, PRIO_ZEIT_BASIS);
+    setze(s.licht[2], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+}
 
   // Sperre (schlaegt Sensor): nachts bleiben ALLE Jalousien zu.
+  /*
   if (k.phase == Phase::NACHT)
     for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
       for (uint8_t seite = 0; seite < ANZ_SEITEN; seite++)
         setze(s.jalousie[e][seite], 100, PRIO_ZEIT_SPERRE);
-
+  */
   // TODO: morgens Jalousie auf, feinere Sollwert-Profile, Nachtruhe (Disco aus) ...
 }
-
+/*
 // =============================================================================
 //  Schicht: SENSOREN  (Prio 50)
 // =============================================================================
@@ -61,8 +90,8 @@ void sensorRegeln(const Kontext& k, Soll& s) {
     else if (ist > soll + HYSTERESE) setze(s.kuehlLed[e], 1, PRIO_SENSOR);
     // im Hysterese-Band: nichts setzen -> bleibt aus (Basiswert)
   }
-
-  // Licht: Bewegung UND dunkel -> Etagenlicht voll an.
+  */
+  /* Licht: Bewegung UND dunkel -> Etagenlicht voll an.
   if (k.bewegung && k.helligkeit < DUNKEL_LUX)
     for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
       setze(s.licht[e], 3, PRIO_SENSOR);
@@ -71,13 +100,14 @@ void sensorRegeln(const Kontext& k, Soll& s) {
   if (k.helligkeit > SONNE_HELL_LUX && k.sonnenSeite >= 0)
     for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
       setze(s.jalousie[e][k.sonnenSeite], 100, PRIO_SENSOR);
-
+  
   // TODO: weitere Sensor-Regeln (Feuchte, PIR pro Etage, CO2, ...).
 }
-
+  */
 // =============================================================================
 //  Schicht: HANDEINGRIFF  (Etagen-Klima-Taster, "hart an", Prio 100)
 // =============================================================================
+/*
 void handRegeln(const Kontext& k, Soll& s) {
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
     switch (k.klimaModus[e]) {
@@ -88,14 +118,15 @@ void handRegeln(const Kontext& k, Soll& s) {
   }
 
   if (k.discoWunsch) setze(s.disco, 1, PRIO_HAND);
-
+ 
   // TODO: weitere Handeingriffe / Dashboard-Befehle (eigene Prio).
 }
-
+   */
 // =============================================================================
 //  INTERLOCKS  –  Konflikte prioritaetsbewusst aufloesen
 //  (abgeleitete Schreibvorgaenge mit der Prio ihres Ausloesers)
 // =============================================================================
+/*
 void interlocks(Soll& s) {
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
     bool heizen  = s.heizung[e].wert  != 0;
@@ -132,3 +163,4 @@ void interlocks(Soll& s) {
   // Disco (OG2) an -> Licht OG2 (Kanal 2) aus.
   if (s.disco.wert != 0) setze(s.licht[OG2], 0, s.disco.prio);
 }
+  */
