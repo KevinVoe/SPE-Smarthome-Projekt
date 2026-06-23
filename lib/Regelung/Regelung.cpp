@@ -58,8 +58,8 @@ else if (abend) {
     setze(s.licht[0], 2, PRIO_ZEIT_BASIS);
     setze(s.licht[1], 3, PRIO_ZEIT_BASIS);
     setze(s.licht[2], 3, PRIO_ZEIT_BASIS);
-    setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
-    setze(s.licht[4], 3, PRIO_ZEIT_BASIS);
+    setze(s.licht[3], 3, PRIO_ZEIT_BASIS);
+    setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
     setze(s.disco, 1, PRIO_ZEIT_BASIS);
 }
 else if (nacht) {

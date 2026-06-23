@@ -81,6 +81,8 @@ void loop() {
   // ── Debug-Ausgabe (1x pro Sekunde) ─────────────────────────────────────────
   static uint32_t t = 0;
   if (millis() - t >= 1000) { t = millis(); debugAusgabe(k, soll); }
+
+  
 }
 
 // -----------------------------------------------------------------------------
