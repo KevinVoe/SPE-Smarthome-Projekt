@@ -21,39 +21,43 @@
 #include <ArduinoJson.h>
 #include <functional>
 #include "Regelung.h"   // Soll + Kontext fuer update()
-
+ 
 // Spaetestens nach dieser Zeit wird ein Frame gesendet, auch ohne Aenderung
 // (Heartbeat). Bei Aenderung wird sofort gesendet.
 constexpr uint32_t TELEMETRIE_MAX_INTERVALL_MS = 5000;
-
+ 
 class Kommunikation {
 public:
   using BefehlHandler = std::function<void(JsonDocument&)>;
-
+ 
   explicit Kommunikation(Stream& port);
   void begin();
-
+ 
   // Pi -> ESP: eingehende Befehlszeilen verarbeiten (nicht-blockierend).
   void update_empfang();
   void onBefehl(BefehlHandler h) { _handler = h; }
-
+ 
   // ESP -> Pi: einzelnen Status senden (eine JSON-Zeile).
   void sendeStatus(const char* feld, float wert);
   void sendeStatus(const char* feld, bool  an);
-
+ 
   // ESP -> Pi: Telemetrie. Oft aufrufbar (z.B. jede Loop).
   // Sendet NUR bei tatsaechlicher Aenderung des Frames, mindestens aber
   // alle TELEMETRIE_MAX_INTERVALL_MS (Heartbeat).
-  void update(const Soll& s, const Kontext& k);
-
+  // Rueckgabe: true, wenn in DIESEM Aufruf tatsaechlich gesendet wurde.
+  bool update(const Soll& s, const Kontext& k);
+ 
+  // Der zuletzt GESENDETE Telemetrie-Frame (zum Mitloggen/Pruefen auf USB).
+  const String& letzteTelemetrie() const { return _letzteTelemetrie; }
+ 
 private:
   void   _verarbeite(const String& zeile);
   String _baueTelemetrieJson(const Soll& s, const Kontext& k);
-
+ 
   Stream&       _port;
   String        _puffer;            // Empfangspuffer (Pi -> ESP)
   BefehlHandler _handler;
-
+ 
   String        _letzteTelemetrie;  // zuletzt gesendeter Frame (Vergleichsbasis)
   uint32_t      _letzterSendeMs = 0;
   bool          _ersterFrame    = true;   // erzwingt erstes Senden

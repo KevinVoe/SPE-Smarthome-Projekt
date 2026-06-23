@@ -32,7 +32,8 @@ KlimaModus klimaModus[ANZ_ETAGEN] = {
   KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK
 };
 
-void anwenden(const Kontext& k, const Soll& s);
+void anwenden(const Soll& s);
+void telemetrie(const Kontext& k, const Soll& s);
 void debugAusgabe(const Kontext& k, const Soll& s);
 
 void setup() {
@@ -72,7 +73,10 @@ void loop() {
   //interlocks(soll);
 
   // ── 4) Anwenden ────────────────────────────────────────────────────────────
-  anwenden(k, soll);
+  anwenden(soll);
+
+  // ── 5) Telemetrie zum Pi (intern gedrosselt auf max. 1x / 100 ms) ──────────
+  telemetrie(k, soll);
 
   // ── Debug-Ausgabe (1x pro Sekunde) ─────────────────────────────────────────
   static uint32_t t = 0;
@@ -89,7 +93,7 @@ void loop() {
 //    if (s.disco.wert) disco.an(); else disco.aus();
 //    io.digitalWrite(KLIMAANLAGE_PIN, s.klimaanlage.wert);
 // -----------------------------------------------------------------------------
-void anwenden(const Kontext& k, const Soll& s) {
+void anwenden(const Soll& s) {
 
   static uint8_t letzteLichtStufe[LICHT_MAX_KANAELE] = {};
   for (uint8_t e = 0; e < LICHT_MAX_KANAELE; e++) {
@@ -110,7 +114,32 @@ void anwenden(const Kontext& k, const Soll& s) {
   letzterDiscoStatus = neuerDiscoStatus;
   disco.update();
 
-  kommunikation.update(s, k);
+}
+
+// -----------------------------------------------------------------------------
+//  Telemetrie an den Pi - max. 1x pro 100 ms.
+//  kommunikation.update() sendet intern ohnehin nur bei Aenderung (+ 5s-
+//  Heartbeat); die 100-ms-Drossel deckelt zusaetzlich die Aufrufrate.
+//  TELEMETRIE_USB_SPIEGEL=1 -> jeder TATSAECHLICH gesendete Frame wird
+//  zusaetzlich auf USB (Serial) ausgegeben, zum Pruefen.
+// -----------------------------------------------------------------------------
+#define TELEMETRIE_USB_SPIEGEL 1   // auf 0 setzen, um die USB-Ausgabe abzuschalten
+
+void telemetrie(const Kontext& k, const Soll& s) {
+  static uint32_t letzteMs = 0;
+  if (millis() - letzteMs < 100) return;   // Drossel: hoechstens alle 100 ms
+  letzteMs = millis();
+
+  bool gesendet = kommunikation.update(s, k);
+
+#if TELEMETRIE_USB_SPIEGEL
+  if (gesendet) {
+    Serial.print("[TX->Pi] ");
+    Serial.println(kommunikation.letzteTelemetrie());
+  }
+#else
+  (void)gesendet; 
+#endif
 }
 
 // Kompakte Statuszeile zum Mitlesen, solange noch keine Hardware dranhaengt.
