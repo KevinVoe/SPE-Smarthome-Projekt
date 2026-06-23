@@ -12,6 +12,7 @@
 #include "Config.h"
 #include "Licht.h"
 #include "DiscoLight.h"
+#include "Kommunikation.h"
 
 // Persistenter Zustand ZWISCHEN den Loops (der Soll wird jede Loop neu gebaut).
 // Die Modus-Taster schalten diesen Wert spaeter per Flankenerkennung weiter.
@@ -23,11 +24,15 @@ Licht licht(lichtPins);
 
 DiscoLight disco(DISCO_STRIP_PIN, DISCO_ANZAHL_LEDS);
 
+HardwareSerial Link(2);              // UART2 zum Pi
+Kommunikation  kommunikation(Link);
+
+
 KlimaModus klimaModus[ANZ_ETAGEN] = {
   KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK
 };
 
-void anwenden(const Soll& s);
+void anwenden(const Kontext& k, const Soll& s);
 void debugAusgabe(const Kontext& k, const Soll& s);
 
 void setup() {
@@ -38,6 +43,10 @@ void setup() {
   //       sobald die Module hier verdrahtet werden.
   licht.begin();
   disco.begin();
+  Link.begin(115200, SERIAL_8N1, 16, 17);   // RX=16, TX=17
+  kommunikation.begin();
+  delay(300);
+  Serial.println("[main.cpp] Setup fertig.");
 }
 
 void loop() {
@@ -63,7 +72,7 @@ void loop() {
   //interlocks(soll);
 
   // ── 4) Anwenden ────────────────────────────────────────────────────────────
-  anwenden(soll);
+  anwenden(k, soll);
 
   // ── Debug-Ausgabe (1x pro Sekunde) ─────────────────────────────────────────
   static uint32_t t = 0;
@@ -80,8 +89,8 @@ void loop() {
 //    if (s.disco.wert) disco.an(); else disco.aus();
 //    io.digitalWrite(KLIMAANLAGE_PIN, s.klimaanlage.wert);
 // -----------------------------------------------------------------------------
-void anwenden(const Soll& s) {
-  
+void anwenden(const Kontext& k, const Soll& s) {
+
   static uint8_t letzteLichtStufe[LICHT_MAX_KANAELE] = {};
   for (uint8_t e = 0; e < LICHT_MAX_KANAELE; e++) {
     uint8_t neueStufe = (uint8_t)s.licht[e].wert;
@@ -100,6 +109,8 @@ void anwenden(const Soll& s) {
   }
   letzterDiscoStatus = neuerDiscoStatus;
   disco.update();
+
+  kommunikation.update(s, k);
 }
 
 // Kompakte Statuszeile zum Mitlesen, solange noch keine Hardware dranhaengt.
