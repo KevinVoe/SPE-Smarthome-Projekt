@@ -102,6 +102,7 @@ float  sollTemperatur(Phase p);
 
 // ─── Schichten (in main SICHTBAR nacheinander aufrufen) ──────────────────────
 void tageszeitRegeln(const Kontext& k, Soll& s);   // Basis (10) + Sperren (60)
-void dashboardRegeln(Soll& s, DashboardState& dash);  // Pi-Befehle, dash wird mutiert (TTL)void sensorRegeln  (const Kontext& k, Soll& s);    // 50
+void dashboardRegeln(Soll& s, DashboardState& dash);  // Pi-Befehle, dash wird mutiert (TTL)
+void sensorRegeln  (const Kontext& k, Soll& s);    // 50
 void handRegeln    (const Kontext& k, Soll& s);    // 100
 void interlocks    (Soll& s);                      // Konflikte prioritaetsbewusst
