@@ -12,6 +12,19 @@
 constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 30 s - hier konfigurierbar
 
 // =============================================================================
+//  I2C-BUS  (gemeinsam: 2x MCP23017 + PCA9685)
+// -----------------------------------------------------------------------------
+//  MCP-IN  = nur Eingaenge (alle Pins INPUT_PULLUP, von Io::begin gesetzt)
+//  MCP-OUT = nur Ausgaenge (Transistoren, active-high: HIGH = leitet)
+//  Adressen ueber A0/A1/A2 am MCP einstellen.
+// =============================================================================
+constexpr int     PIN_SDA      = 21;
+constexpr int     PIN_SCL      = 22;
+constexpr uint8_t ADDR_MCP_IN  = 0x20;   // MCP23017 #1 - Eingaenge
+constexpr uint8_t ADDR_MCP_OUT = 0x24;   // MCP23017 #2 - Ausgaenge (A2=high; Test mit 1 MCP)
+constexpr uint8_t ADDR_PCA9685 = 0x40;   // PWM-Treiber (Servos)
+
+// =============================================================================
 //  MODUS-TASTER  (je EINER pro Etage, schaltet zwischen 5 Modi durch)
 //  Werden zentral vom Modul "Taster" eingelesen (Entprellung). Welcher Modus
 //  daraus wird (Heizen/Kuehlen/Fenster.../Automatik), entscheidet main.cpp.
@@ -73,11 +86,11 @@ constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
 // =============================================================================
 //  SICHERHEIT  (Reed-Kontakte, PIR, Alarmrelais, Buzzer)
 // =============================================================================
-constexpr IoPin REED_TUER_EG     = mcpPin(5);
-constexpr IoPin REED_FENSTER_OG  = mcpPin(6);
-constexpr IoPin PIR_SCHLAFZIMMER = mcpPin(4);
-constexpr IoPin ALARM_RELAIS     = mcpPin(11);
-constexpr IoPin ALARM_BUZZER     = mcpPin(12);
+constexpr IoPin REED_TUER_EG     = mcpInPin(5);    // Eingang  (Pull-up)
+constexpr IoPin REED_FENSTER_OG  = mcpInPin(6);    // Eingang  (Pull-up)
+constexpr IoPin PIR_SCHLAFZIMMER = mcpInPin(4);    // Eingang  (Pull-up)
+constexpr IoPin ALARM_RELAIS     = mcpOutPin(11);  // Ausgang  (Transistor)
+constexpr IoPin ALARM_BUZZER     = mcpOutPin(12);  // Ausgang  (Transistor)
 
 // =============================================================================
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
