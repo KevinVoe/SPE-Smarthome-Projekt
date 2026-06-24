@@ -64,13 +64,19 @@ void Kommunikation::sendeStatus(const char* feld, bool  an) {
 String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   JsonDocument doc;
   doc["type"] = "telemetry";
- 
+  doc["time"] = 0;  //TODO: simulierte Uhrzeit übergeben
   // temp: Mittelwert ueber alle Etagen (Kontext). Falls eine bestimmte Etage
   // gewuenscht ist, hier anpassen.
   doc["temp"]     = (k.temperatur[0] + k.temperatur[1] + k.temperatur[2]) / 3.0f;
   doc["humidity"] = 0;      // TODO: keine Quelle in Soll/Kontext (Feuchtesensor)
-  doc["tv"]       = 0;      // TODO: keine Quelle in Soll/Kontext (Fernseher)
- 
+
+  JsonObject outdoor = doc["outdoor"].to<JsonObject>();
+  outdoor["ext_light"] = s.licht[1].wert;      // TODO: keine Quelle in Soll/Kontext (Aussenbeleuchtung)
+  outdoor["door_light"] = s.licht[0].wert;
+  outdoor["whirlpool"] = 0;
+  outdoor["garage"] = 0;
+  outdoor["front_door"] = 0;
+
   JsonObject roof = doc["roof"].to<JsonObject>();
   roof["pv_voltage"] = 0.0f;                                  // TODO: keine Quelle (PV-Sensor)
   roof["skylight1"]  = 0;                                     // TODO: kein Soll-Feld (EG-Dachfenster)
@@ -86,7 +92,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   eg["blind2"] = jalousieZuBlind(s.jalousie[0][1].wert);
   eg["heat1"]  = s.heizung[0].wert;   // Soll kennt nur 1 Heizwert/Etage ->
   eg["heat2"]  = s.heizung[0].wert;   //   auf beide Heizkreise gespiegelt
-  eg["light"]  = s.licht[0].wert;     // Stufe 0..3
+  eg["light"]  = s.licht[2].wert;     // Stufe 0..3
  
   // ── E1 (Soll-Index 1) ────────────────────────────────────────────────────
   JsonObject e1 = floors["E1"].to<JsonObject>();
@@ -95,8 +101,9 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   e1["blind2"] = jalousieZuBlind(s.jalousie[1][1].wert);
   e1["heat1"]  = s.heizung[1].wert;
   e1["heat2"]  = s.heizung[1].wert;
-  e1["light"]  = s.licht[1].wert;
-  e1["party"]  = 0;   // TODO: Soll.disco ist OG2/E2 zugeordnet, nicht E1.
+  e1["light"]  = s.licht[3].wert;
+  e1["tv"]     = 0;   // TODO: keine Quelle (Fernseher)
+  
                       //       Hier bewusst Blanko, damit das Schema (party @E1)
                       //       erfuellt ist; echte Quelle fuer E1-Party fehlt.
  
@@ -107,9 +114,8 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   e2["blind2"] = jalousieZuBlind(s.jalousie[2][1].wert);
   e2["heat1"]  = s.heizung[2].wert;
   e2["heat2"]  = s.heizung[2].wert;
-  e2["light"]  = s.licht[2].wert;
-  // Hinweis: Im Zielschema hat E2 KEIN "party". s.disco (OG2/Disco) wird daher
-  // aktuell NICHT uebertragen - bei Bedarf hier ergaenzen.
+  e2["light"]  = s.licht[4].wert;
+  e2["party"]  = s.disco.wert;
  
   doc["elevator"]["floor"] = 0;   // TODO: keine Quelle (Aufzug-Modul)
  
