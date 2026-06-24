@@ -38,8 +38,8 @@ DashboardState gDash;
 void anwenden(const Soll& s);
 void telemetrie(const Kontext& k, const Soll& s);
 void debugAusgabe(const Kontext& k, const Soll& s);
-void behandleBefehl(JsonDocument& doc);
-void dashboardRegeln(const Kontext& k, Soll& s);
+void behandleBefehl(JsonDocument& doc, DashboardState& dash);
+void dashboardRegeln(Soll& s, DashboardState& dash);
 
 void setup() {
   Serial.begin(115200);
@@ -75,7 +75,7 @@ void loop() {
   tageszeitRegeln(k, soll);
   //sensorRegeln(k, soll);
   //handRegeln(k, soll);
-  dashboardRegeln(soll, gDash);;
+  dashboardRegeln(soll, gDash);
 
   // ── 3) Konflikte aufloesen ─────────────────────────────────────────────────
   //interlocks(soll);

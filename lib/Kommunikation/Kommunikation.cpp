@@ -1,3 +1,4 @@
+#include <cstring>
 #include "Kommunikation.h"
  
 // ── Konvertierungs-Hilfen: Soll-Prozentwerte -> Bool-Felder im Pi-Schema ────
@@ -135,4 +136,34 @@ bool Kommunikation::update(const Soll& s, const Kontext& k) {
     return true;                          // hat gesendet
   }
   return false;                           // nichts zu tun
+}
+
+static int etageAusName(const char* f) {
+  if (!f) return -1;
+  if (!strcmp(f, "EG")) return 0;
+  if (!strcmp(f, "E1")) return 1;
+  if (!strcmp(f, "E2")) return 2;
+  return -1;
+}
+
+void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
+  const char* cmd = doc["cmd"] | "";
+  if (!*cmd) return;
+  int val = doc["value"] | 0;
+  int et  = etageAusName(doc["floor"] | (const char*)nullptr);
+
+  if      (!strcmp(cmd, "blind1")) { if (et >= 0) dashSetze(dash.blind[et][0], val); }
+  else if (!strcmp(cmd, "blind2")) { if (et >= 0) dashSetze(dash.blind[et][1], val); }
+  else if (!strcmp(cmd, "heat1") ||
+           !strcmp(cmd, "heat2")) { if (et >= 0) dashSetze(dash.heat[et],  val); }
+  else if (!strcmp(cmd, "light"))  { if (et >= 0) dashSetze(dash.light[et], val); }
+  else if (!strcmp(cmd, "mode"))   { if (et >= 0) dashSetze(dash.mode[et],  val); }
+  else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
+  else if (!strcmp(cmd, "ac"))         dashSetze(dash.ac,         val);
+  else if (!strcmp(cmd, "skylight2"))  dashSetze(dash.skylight2,  val);
+  else if (!strcmp(cmd, "skylight1"))  dashSetze(dash.skylight1,  val);
+  else if (!strcmp(cmd, "tv"))         dashSetze(dash.tv,         val);
+  else if (!strcmp(cmd, "garage"))     dashSetze(dash.garage,     val);
+  else if (!strcmp(cmd, "front_door")) dashSetze(dash.front_door, val);
+  else if (!strcmp(cmd, "elevator"))   dashSetze(dash.elevator,   val);
 }

@@ -25,6 +25,8 @@
 // Spaetestens nach dieser Zeit wird ein Frame gesendet, auch ohne Aenderung
 // (Heartbeat). Bei Aenderung wird sofort gesendet.
 constexpr uint32_t TELEMETRIE_MAX_INTERVALL_MS = 5000;
+
+void behandleBefehl(JsonDocument& doc, DashboardState& dash);
  
 class Kommunikation {
 public:

@@ -28,6 +28,18 @@ float sollTemperatur(Phase p) {
   return (p == Phase::NACHT) ? SOLL_TEMP_NACHT : SOLL_TEMP_TAG;
 }
 
+// ─── Dashboard-Regeln (Befehle vom Pi anwenden) ──────────────────────────────
+static bool dashAktiv(DashBefehl& b) {
+  if (b.wert < 0) return false;
+  if ((int32_t)(millis() - b.deadline) >= 0) { b.wert = -1; return false; }  // TTL abgelaufen
+  return true;
+}
+
+void dashSetze(DashBefehl& b, int wert) {
+  b.wert     = (int8_t)wert;
+  b.deadline = millis() + DASHBOARD_TTL_MS;
+}
+
 // =============================================================================
 //  Schicht: TAGESZEIT  (Basis Prio 10 + Sperren Prio 60)
 // =============================================================================
@@ -126,6 +138,22 @@ void handRegeln(const Kontext& k, Soll& s) {
   // TODO: weitere Handeingriffe / Dashboard-Befehle (eigene Prio).
 }
    */
+
+void dashboardRegeln(Soll& s, DashboardState& dash) {
+  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
+    for (uint8_t seite = 0; seite < ANZ_SEITEN; seite++)
+      if (dashAktiv(dash.blind[e][seite]))
+        setze(s.jalousie[e][seite], dash.blind[e][seite].wert ? 0 : 100, PRIO_DASHBOARD);
+
+    if (dashAktiv(dash.heat[e]))  setze(s.heizung[e], dash.heat[e].wert,  PRIO_DASHBOARD);
+    if (dashAktiv(dash.light[e])) setze(s.licht[e],   dash.light[e].wert, PRIO_DASHBOARD);
+  }
+  if (dashAktiv(dash.party))     setze(s.disco,          dash.party.wert,               PRIO_DASHBOARD);
+  if (dashAktiv(dash.ac))        setze(s.klimaanlage,    dash.ac.wert,                  PRIO_DASHBOARD);
+  if (dashAktiv(dash.skylight2)) setze(s.dachfensterOG2, dash.skylight2.wert ? 100 : 0, PRIO_DASHBOARD);
+  // TODO: mode/tv/skylight1/garage/front_door/elevator haben (noch) kein Soll-Feld
+}
+
 // =============================================================================
 //  INTERLOCKS  –  Konflikte prioritaetsbewusst aufloesen
 //  (abgeleitete Schreibvorgaenge mit der Prio ihres Ausloesers)

@@ -72,11 +72,28 @@ struct Kontext {
   bool       discoWunsch = false;
 };
 
+// ─── Dashboard-Override (Befehle vom Raspberry Pi) ───────────────────────────
+// DASHBOARD_TTL_MS liegt in Config.h (zentrale Tuning-Stelle).
+struct DashBefehl {
+  int8_t   wert     = -1;   // -1 = inaktiv (kein Override)
+  uint32_t deadline = 0;    // millis()-Zeitpunkt, ab dem der Befehl verfaellt
+};
+
+struct DashboardState {
+  DashBefehl blind[ANZ_ETAGEN][ANZ_SEITEN];
+  DashBefehl heat[ANZ_ETAGEN];
+  DashBefehl light[ANZ_ETAGEN];
+  DashBefehl mode[ANZ_ETAGEN];
+  DashBefehl party, ac, skylight2;
+  DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
+};
+
 // ─── Kern-Helfer ─────────────────────────────────────────────────────────────
 // Schreibt nur, wenn prio >= bisher gesetzter Prio (hoechste Prio gewinnt).
 inline void setze(Feld& f, int16_t wert, uint8_t prio) {
   if (prio >= f.prio) { f.wert = wert; f.prio = prio; }
 }
+void dashSetze(DashBefehl& b, int wert);              // Wert setzen + TTL aufziehen
 
 float  berechneTageszeit(uint32_t jetztMs, uint32_t tagLaengeMs);   // -> 0..24 h
 Phase  phaseAus(float stunde);
@@ -85,6 +102,6 @@ float  sollTemperatur(Phase p);
 
 // ─── Schichten (in main SICHTBAR nacheinander aufrufen) ──────────────────────
 void tageszeitRegeln(const Kontext& k, Soll& s);   // Basis (10) + Sperren (60)
-void sensorRegeln  (const Kontext& k, Soll& s);    // 50
+void dashboardRegeln(Soll& s, DashboardState& dash);  // Pi-Befehle, dash wird mutiert (TTL)void sensorRegeln  (const Kontext& k, Soll& s);    // 50
 void handRegeln    (const Kontext& k, Soll& s);    // 100
 void interlocks    (Soll& s);                      // Konflikte prioritaetsbewusst
