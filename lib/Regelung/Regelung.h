@@ -16,9 +16,10 @@
 #include <Arduino.h>
 
 // ─── Prioritaets-Baender (frei justierbar) ───────────────────────────────────
-constexpr uint8_t PRIO_ZEIT_BASIS  = 10;   // Grundverhalten nach Tageszeit
-constexpr uint8_t PRIO_SENSOR      = 50;   // Sensor-Regeln (Hysterese, dunkel...)
+constexpr uint8_t PRIO_ZEIT_BASIS  = 20;   // Grundverhalten nach Tageszeit
+constexpr uint8_t PRIO_SENSOR      = 40;   // Sensor-Regeln (Hysterese, dunkel...)
 constexpr uint8_t PRIO_ZEIT_SPERRE = 60;   // Tageszeit-Sperren (schlagen Sensor)
+constexpr uint8_t PRIO_DASHBOARD   = 80;   // Dashboard-Befehle (z.B. Pi)
 constexpr uint8_t PRIO_HAND        = 100;  // Handeingriff (Etagen-Taster)
 // (Reserviert: PRIO_DASHBOARD spaeter zwischen 90 und 110)
 

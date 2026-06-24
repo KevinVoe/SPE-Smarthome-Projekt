@@ -8,6 +8,7 @@
 //  gibt ihr Ergebnis per Serial aus (zum Mitlesen ohne Hardware).
 // =============================================================================
 #include <Arduino.h>
+#include <cstring>
 #include "Regelung.h"
 #include "Config.h"
 #include "Licht.h"
@@ -32,9 +33,13 @@ KlimaModus klimaModus[ANZ_ETAGEN] = {
   KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK
 };
 
+DashboardState gDash;
+
 void anwenden(const Soll& s);
 void telemetrie(const Kontext& k, const Soll& s);
 void debugAusgabe(const Kontext& k, const Soll& s);
+void behandleBefehl(JsonDocument& doc);
+void dashboardRegeln(const Kontext& k, Soll& s);
 
 void setup() {
   Serial.begin(115200);
@@ -46,6 +51,7 @@ void setup() {
   disco.begin();
   Link.begin(115200, SERIAL_8N1, 16, 17);   // RX=16, TX=17
   kommunikation.begin();
+  kommunikation.onBefehl([](JsonDocument& d){ behandleBefehl(d, gDash); });
   delay(300);
   Serial.println("[main.cpp] Setup fertig.");
 }
@@ -62,12 +68,14 @@ void loop() {
   //   k.helligkeit = sensorik.helligkeit();  k.bewegung = ...;
   //   Flankenerkennung der Klima-Taster -> klimaModus[e] weiterschalten
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++) k.klimaModus[e] = klimaModus[e];
-
+  
+  kommunikation.update_empfang();
   // ── 2) Soll bilden: Schichten SICHTBAR nacheinander (Prio entscheidet) ─────
   Soll soll;                       // frisch -> alle Felder Default (0)
   tageszeitRegeln(k, soll);
   //sensorRegeln(k, soll);
   //handRegeln(k, soll);
+  dashboardRegeln(soll, gDash);;
 
   // ── 3) Konflikte aufloesen ─────────────────────────────────────────────────
   //interlocks(soll);
@@ -82,7 +90,7 @@ void loop() {
   static uint32_t t = 0;
   if (millis() - t >= 1000) { t = millis(); debugAusgabe(k, soll); }
 
-  
+
 }
 
 // -----------------------------------------------------------------------------

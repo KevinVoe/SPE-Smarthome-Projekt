@@ -8,6 +8,9 @@
 #pragma once
 #include "Io.h"   // liefert IoPin, espPin(), mcpPin()
 
+// ── Dashboard-Override mit Time-To-Live ─────────────────────────────────────
+constexpr uint32_t DASHBOARD_TTL_MS = 30000;   // 30 s - hier konfigurierbar
+
 // =============================================================================
 //  MODUS-TASTER  (je EINER pro Etage, schaltet zwischen 5 Modi durch)
 //  Werden zentral vom Modul "Taster" eingelesen (Entprellung). Welcher Modus

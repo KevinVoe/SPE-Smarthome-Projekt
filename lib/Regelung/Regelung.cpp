@@ -82,7 +82,7 @@ else if (nacht) {
 }
 /*
 // =============================================================================
-//  Schicht: SENSOREN  (Prio 50)
+//  Schicht: SENSOREN  (Prio 40)
 // =============================================================================
 void sensorRegeln(const Kontext& k, Soll& s) {
   // Klima-Hysterese je Etage - NUR im Automatik-Modus.
