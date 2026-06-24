@@ -1,27 +1,24 @@
 // =============================================================================
-//  Servoaktor  –  servogetriebener Aktor am PCA9685
+//  Servoaktor  –  alle Servos am PCA9685 (Jalousien, Dachfenster, Garage)
 // -----------------------------------------------------------------------------
-//  Generische Klasse fuer ALLE Servo-Aufgaben: Dachfenster, Jalousien,
-//  Garagentor. Pro Objekt ein PCA9685-Kanal + die beiden Endlagen (Ticks).
-//  Der PCA9685-Treiber wird von main bereitgestellt und per Referenz geteilt.
+//  Funktions-Modul (freie Funktionen) - direkt aus Regelung/anwenden aufrufbar.
+//  Jeder Servo faehrt zwischen zwei in Config.h hinterlegten Endlagen (ZU/AUF),
+//  und zwar SANFT (in kleinen Schritten) - dafuer MUSS servosUpdate() in jeder
+//  loop() laufen. Die Funktionen setzen nur das Ziel; das Fahren macht update().
+//
+//  Kanal- und Endlagen-Tabellen stehen in Config.h (SERVO_JALOUSIE usw.).
 // =============================================================================
 #pragma once
 #include <Arduino.h>
-#include <Adafruit_PWMServoDriver.h>
+#include "Config.h"   // Etage, Seite, Position, SERVO_*-Tabellen, ADDR_PCA9685
 
-class Servoaktor {
-public:
-  Servoaktor(Adafruit_PWMServoDriver& pwm, uint8_t kanal,
-             uint16_t tickZu, uint16_t tickAuf);
-  void begin();
-  void auf();
-  void zu();
-  void setProzent(uint8_t prozent);    // 0 = zu, 100 = auf
-  bool istAuf() const { return _prozent > 50; }
+// EINMAL in setup() - NACH io.begin() (der I2C-Bus muss bereits laufen).
+void servosBegin();
 
-private:
-  Adafruit_PWMServoDriver& _pwm;
-  uint8_t  _kanal;
-  uint16_t _tickZu, _tickAuf;
-  uint8_t  _prozent = 0;
-};
+// EINMAL pro loop() - bewegt alle Servos einen Schritt Richtung Ziel.
+void servosUpdate();
+
+// Zielposition setzen (gefahren wird dann sanft in servosUpdate()):
+void fahreJalousie(Position p, Etage etage, Seite seite);   // 6 Servos
+void fahreDachfenster(Position p, Seite seite);             // 2 Servos (beide OG2)
+void fahreGarage(Position p);                               // 1 Servo

@@ -88,6 +88,18 @@ struct DashboardState {
   DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
 };
 
+// ─── Etagen-Modus per Taster (Hand) mit TTL - parallel zu DashboardState ─────
+// Der DigitalInput-Treiber liefert nur Flanken; die Modus-Bedeutung + TTL leben
+// hier (Logik). TASTER_TTL_MS steht in Config.h.
+struct TasterState {
+  KlimaModus modus[ANZ_ETAGEN]    = { KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK };
+  uint32_t   deadline[ANZ_ETAGEN] = { 0, 0, 0 };
+};
+
+void       tasterWeiterschalten(TasterState& ts, uint8_t etage); // Heizen->Kuehlen->Automatik + TTL neu
+void       tasterTick(TasterState& ts);                          // abgelaufene Modi -> Automatik
+KlimaModus tasterModus(const TasterState& ts, uint8_t etage);    // aktueller Modus der Etage
+
 // ─── Kern-Helfer ─────────────────────────────────────────────────────────────
 // Schreibt nur, wenn prio >= bisher gesetzter Prio (hoechste Prio gewinnt).
 inline void setze(Feld& f, int16_t wert, uint8_t prio) {

@@ -154,6 +154,29 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
   // TODO: mode/tv/skylight1/garage/front_door/elevator haben (noch) kein Soll-Feld
 }
 
+// ─── Etagen-Modus per Taster (Hand) mit TTL ──────────────────────────────────
+// Bei jedem Tastendruck einen Modus weiterschalten und die TTL neu aufziehen.
+void tasterWeiterschalten(TasterState& ts, uint8_t e) {
+  switch (ts.modus[e]) {                                   // Zyklus:
+    case KlimaModus::AUTOMATIK: ts.modus[e] = KlimaModus::HEIZEN;    break;  // Auto -> Heizen
+    case KlimaModus::HEIZEN:    ts.modus[e] = KlimaModus::KUEHLEN;   break;  // Heizen -> Kuehlen
+    case KlimaModus::KUEHLEN:   ts.modus[e] = KlimaModus::AUTOMATIK; break;  // Kuehlen -> Auto
+  }
+  ts.deadline[e] = millis() + TASTER_TTL_MS;
+}
+
+// Abgelaufene Hand-Modi fallen automatisch auf Automatik zurueck.
+void tasterTick(TasterState& ts) {
+  for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
+    if (ts.modus[e] != KlimaModus::AUTOMATIK &&
+        (int32_t)(millis() - ts.deadline[e]) >= 0)
+      ts.modus[e] = KlimaModus::AUTOMATIK;
+}
+
+KlimaModus tasterModus(const TasterState& ts, uint8_t e) {
+  return ts.modus[e];
+}
+
 // =============================================================================
 //  INTERLOCKS  –  Konflikte prioritaetsbewusst aufloesen
 //  (abgeleitete Schreibvorgaenge mit der Prio ihres Ausloesers)

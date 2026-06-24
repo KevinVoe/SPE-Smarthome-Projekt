@@ -6,7 +6,7 @@
 //  echte Verkabelung mit allen Modulen ansteht).
 // =============================================================================
 #pragma once
-#include "Io.h"   // liefert IoPin, espPin(), mcpPin()
+#include <Arduino.h>   // uint8_t / uint16_t / uint32_t
 
 // ── Dashboard-Override mit Time-To-Live ─────────────────────────────────────
 constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 30 s - hier konfigurierbar
@@ -23,6 +23,44 @@ constexpr int     PIN_SCL      = 22;
 constexpr uint8_t ADDR_MCP_IN  = 0x20;   // MCP23017 #1 - Eingaenge
 constexpr uint8_t ADDR_MCP_OUT = 0x24;   // MCP23017 #2 - Ausgaenge (A2=high; Test mit 1 MCP)
 constexpr uint8_t ADDR_PCA9685 = 0x40;   // PWM-Treiber (Servos)
+
+// =============================================================================
+//  DOMAIN-TYPEN  (gemeinsame Aufzaehlungen fuer alle Module + Regelung)
+// =============================================================================
+enum class Etage    : uint8_t { EG = 0, OG1 = 1, OG2 = 2 };
+enum class Seite    : uint8_t { LINKS = 0, RECHTS = 1 };
+enum class Position : uint8_t { ZU = 0, AUF = 1 };
+
+// =============================================================================
+//  DIGITALE AUSGAENGE  (Transistoren am MCP-OUT, active-high)  Index = Etage
+// =============================================================================
+constexpr uint8_t MCPOUT_HEIZEN[3]  = { 0, 1, 2 };   // rote LED je Etage
+constexpr uint8_t MCPOUT_KUEHLEN[3] = { 3, 4, 5 };   // blaue LED je Etage
+
+// =============================================================================
+//  DIGITALE EINGAENGE  (am MCP-IN, INPUT_PULLUP; aktiv/geschlossen = LOW)
+// =============================================================================
+constexpr uint8_t  MCPIN_TASTER[3]   = { 0, 1, 2 };  // Klima-Modus-Taster je Etage
+constexpr uint8_t  MCPIN_REED_TUER   = 8;            // Tuerkontakt
+constexpr uint8_t  MCPIN_REED_AUFZUG = 9;            // Aufzug-Ueberwachung
+constexpr uint32_t TASTER_TTL_MS     = 10000;        // Hand-Modus -> danach Automatik
+
+// =============================================================================
+//  SERVOS am PCA9685  (Kanal + Endlagen-Ticks je Servo - pro Servo EINMESSEN!)
+//  Jalousie: [Etage][Seite] | Dachfenster: [Seite] (beide im OG2) | Garage: 1
+// =============================================================================
+struct ServoEndlage { uint8_t kanal; uint16_t tickZu; uint16_t tickAuf; };
+
+constexpr ServoEndlage SERVO_JALOUSIE[3][2] = {
+  { {0, 150, 500}, {1, 150, 500} },   // EG  links / rechts
+  { {2, 150, 500}, {3, 150, 500} },   // OG1 links / rechts
+  { {4, 150, 500}, {5, 150, 500} },   // OG2 links / rechts
+};
+constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
+  {6, 150, 500},   // OG2 links
+  {7, 150, 500},   // OG2 rechts
+};
+constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 500 };
 
 // =============================================================================
 //  MODUS-TASTER  (je EINER pro Etage, schaltet zwischen 5 Modi durch)
@@ -86,11 +124,8 @@ constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
 // =============================================================================
 //  SICHERHEIT  (Reed-Kontakte, PIR, Alarmrelais, Buzzer)
 // =============================================================================
-constexpr IoPin REED_TUER_EG     = mcpInPin(5);    // Eingang  (Pull-up)
-constexpr IoPin REED_FENSTER_OG  = mcpInPin(6);    // Eingang  (Pull-up)
-constexpr IoPin PIR_SCHLAFZIMMER = mcpInPin(4);    // Eingang  (Pull-up)
-constexpr IoPin ALARM_RELAIS     = mcpOutPin(11);  // Ausgang  (Transistor)
-constexpr IoPin ALARM_BUZZER     = mcpOutPin(12);  // Ausgang  (Transistor)
+// (Sicherheit/Alarm spaeter: Reed-Kontakte ueber DigitalInput, Relais/Buzzer
+//  ueber DigitaleOutputs - Pin-Nummern dann als MCPIN_/MCPOUT_-Konstanten hier.)
 
 // =============================================================================
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
