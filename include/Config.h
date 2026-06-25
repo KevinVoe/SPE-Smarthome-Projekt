@@ -62,23 +62,6 @@ constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
 };
 constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 500 };
 
-// =============================================================================
-//  MODUS-TASTER  (je EINER pro Etage, schaltet zwischen 5 Modi durch)
-//  Werden zentral vom Modul "Taster" eingelesen (Entprellung). Welcher Modus
-//  daraus wird (Heizen/Kuehlen/Fenster.../Automatik), entscheidet main.cpp.
-// =============================================================================
-/*constexpr IoPin MODUS_TASTER_EG  = espPin(4);
-constexpr IoPin MODUS_TASTER_OG1 = espPin(16);
-constexpr IoPin MODUS_TASTER_OG2 = espPin(17);
-*/
-// =============================================================================
-//  HEIZUNG  (3 Etagen, je eine LED; LED = simulierte Heizung)
-//  Reine Steuerung ueber Heizung::setState() - kein eigener Taster im Modul.
-// =============================================================================
-/*constexpr IoPin HEIZUNG_EG_LED  = espPin(2);
-constexpr IoPin HEIZUNG_OG1_LED = espPin(15);
-constexpr IoPin HEIZUNG_OG2_LED = espPin(18);
-*/
 
 // =============================================================================
 //  LICHT  (12V LED-Strips ueber IRLZ44N-MOSFETs, PWM vom ESP32)
@@ -105,21 +88,19 @@ constexpr int LICHT_PIN_K3 = 18; // OG1_Licht
 constexpr int LICHT_PIN_K4 = 19; // OG2_Licht
 constexpr int LICHT_PIN_K5 = 23; //Reserve
 
-// =============================================================================
-//  BESCHATTUNG / DACHFENSTER  (Servos am PCA9685, Kanaele 0..7, 50 Hz)
-// =============================================================================
-/*constexpr uint8_t SERVO_DACHFENSTER_OG2 = 0;   // relevant fuer Automatik-Regel 1
-constexpr uint8_t SERVO_DACHFENSTER_OG1 = 1;
-constexpr uint8_t SERVO_JALOUSIE_EG     = 2;
-constexpr uint8_t SERVO_JALOUSIE_OG1    = 3;
-constexpr uint8_t SERVO_GARAGENTOR      = 4;
-*/
-
 //  PWM-Ticks (0..4095) fuer die Endlagen - pro Servo einmal einmessen!
 constexpr uint16_t SERVO_TICK_ZU  = 150;   // ~ 0°
 constexpr uint16_t SERVO_TICK_AUF = 500;   // ~ 90°
 
 constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
+
+// =============================================================================
+//  Sensorik (DHT11/22, Ultraschall, Solarpanel)
+// =============================================================================
+constexpr int SENSORIK_DHT_PIN = 13;   // DHT11/22-Datenpin (GPIO13)
+constexpr int SENSORIK_DHT_TYP = 22;   // DHT-Typ (DHT11 oder DHT22)
+
+
 
 // =============================================================================
 //  SICHERHEIT  (Reed-Kontakte, PIR, Alarmrelais, Buzzer)
