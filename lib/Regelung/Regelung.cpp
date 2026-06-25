@@ -120,25 +120,10 @@ void sensorRegeln(const Kontext& k, Soll& s) {
   // TODO: weitere Sensor-Regeln (Feuchte, PIR pro Etage, CO2, ...).
 }
   */
-// =============================================================================
-//  Schicht: HANDEINGRIFF  (Etagen-Klima-Taster, "hart an", Prio 100)
-// =============================================================================
-/*
-void handRegeln(const Kontext& k, Soll& s) {
-  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
-    switch (k.klimaModus[e]) {
-      case KlimaModus::HEIZEN:    setze(s.heizung[e],  1, PRIO_HAND); break;
-      case KlimaModus::KUEHLEN:   setze(s.kuehlLed[e], 1, PRIO_HAND); break;
-      case KlimaModus::AUTOMATIK: break;   // nichts -> Sensor/Tageszeit entscheiden
-    }
-  }
 
-  if (k.discoWunsch) setze(s.disco, 1, PRIO_HAND);
- 
-  // TODO: weitere Handeingriffe / Dashboard-Befehle (eigene Prio).
-}
-   */
-
+// =============================================================================
+//  Schicht: DASHBOARD  (Pi-Befehle, Prio 80)
+// =============================================================================
 void dashboardRegeln(Soll& s, DashboardState& dash) {
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
     for (uint8_t seite = 0; seite < ANZ_SEITEN; seite++)
@@ -148,8 +133,8 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
     if (dashAktiv(dash.heat[e]))  setze(s.heizung[e], dash.heat[e].wert,  PRIO_DASHBOARD);
     if (dashAktiv(dash.light[e])) setze(s.licht[e+2],   dash.light[e].wert, PRIO_DASHBOARD);
   }
-  if(dashAktiv(dash.ext_light))  setze(s.licht[0], dash.ext_light.wert,  PRIO_DASHBOARD);
-  if(dashAktiv(dash.door_light)) setze(s.licht[1], dash.door_light.wert, PRIO_DASHBOARD);
+  if (dashAktiv(dash.ext_light))  setze(s.licht[0], dash.ext_light.wert,  PRIO_DASHBOARD);
+  if (dashAktiv(dash.door_light)) setze(s.licht[1], dash.door_light.wert, PRIO_DASHBOARD);
   if (dashAktiv(dash.party))     setze(s.disco,          dash.party.wert,               PRIO_DASHBOARD);
   if (dashAktiv(dash.ac))        setze(s.klimaanlage,    dash.ac.wert,                  PRIO_DASHBOARD);
   if (dashAktiv(dash.skylight2)) setze(s.dachfensterOG2, dash.skylight2.wert ? 100 : 0, PRIO_DASHBOARD);
@@ -180,6 +165,22 @@ KlimaModus tasterModus(const TasterState& ts, uint8_t e) {
 }
 
 // =============================================================================
+//  Schicht: HANDEINGRIFF  (Etagen-Klima-Taster, "hart an", Prio 100)
+// =============================================================================
+//  Modus kommt aus k.klimaModus[] (vom Taster gesetzt, mit TTL). "Hart an":
+//  Heizen/Kuehlen werden mit Prio 100 FEST gesetzt (Temperatur egal).
+void handRegeln(const Kontext& k, Soll& s) {
+  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
+    switch (k.klimaModus[e]) {
+      case KlimaModus::HEIZEN:    setze(s.heizung[e],  1, PRIO_HAND); break;
+      case KlimaModus::KUEHLEN:   setze(s.kuehlLed[e], 1, PRIO_HAND); break;
+      case KlimaModus::AUTOMATIK: break;   // nichts -> Sensor/Tageszeit entscheiden
+    }
+  }
+  // TODO: weitere Handeingriffe (z.B. Disco-Taster) hier ergaenzen.
+}
+
+// =============================================================================
 //  INTERLOCKS  –  Konflikte prioritaetsbewusst aufloesen
 //  (abgeleitete Schreibvorgaenge mit der Prio ihres Ausloesers)
 // =============================================================================
@@ -200,11 +201,14 @@ void interlocks(Soll& s) {
     // Heizen -> Klappe zu (mit Prio des Heizens, damit der Sensor sie nicht oeffnet).
     if (heizen) setze(s.klappe[e], 0, s.heizung[e].prio);
 
-    // Kuehlen -> Klappe auf + zentrales Dachfenster auf (Prio des Kuehlens).
-    if (kuehlen) {
-      setze(s.klappe[e], 100, s.kuehlLed[e].prio);
-      setze(s.dachfensterOG2, 100, s.kuehlLed[e].prio);
-    }
+    // Kuehlen -> Lueftung (Klappe auf + OG2-Dachfenster) kommt SPAETER mit der
+    // Klima-Logik. Vorerst schaltet (manuelles) Kuehlen NUR die blaue Kuehl-LED,
+    // damit beim Kuehlen keine Dachfenster-Servos fahren.
+    // if (kuehlen) {
+    //   setze(s.klappe[e], 100, s.kuehlLed[e].prio);
+    //   setze(s.dachfensterOG2, 100, s.kuehlLed[e].prio);
+    // }
+    (void)kuehlen;   // aktuell nur fuer den Heizen/Kuehlen-Ausschluss gebraucht
   }
 
   // Zentrale Klimaanlage = ODER ueber alle Etagen mit offener Klappe (= Luftbedarf).

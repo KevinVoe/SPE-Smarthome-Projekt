@@ -88,7 +88,7 @@ void loop() {
   Soll soll;
   tageszeitRegeln(k, soll);
   // sensorRegeln(k, soll);   // folgt
-  // handRegeln(k, soll);     // folgt
+  handRegeln(k, soll);        // Hand-Modus (Etagen-Taster): Heizen/Kuehlen "hart an"
   dashboardRegeln(soll, gDash);
 
   // 3) Konflikte prioritaetsbewusst aufloesen
