@@ -1,15 +1,40 @@
 #include "Aufzug.h"
 
-Aufzug::Aufzug(int pinStep, int pinDir, int pinEnable,
+// 8-Phasen-Halbschritt-Sequenz fuer 28BYJ-48 (Spaltenreihenfolge IN1,IN2,IN3,IN4).
+static const uint8_t HALBSCHRITT[8][4] = {
+  {1, 0, 0, 0},
+  {1, 1, 0, 0},
+  {0, 1, 0, 0},
+  {0, 1, 1, 0},
+  {0, 0, 1, 0},
+  {0, 0, 1, 1},
+  {0, 0, 0, 1},
+  {1, 0, 0, 1},
+};
+
+Aufzug::Aufzug(int in1, int in2, int in3, int in4,
                uint32_t stepIntervalUs, uint32_t timeoutMs)
-  : _pinStep(pinStep), _pinDir(pinDir), _pinEnable(pinEnable),
-    _stepIntervalUs(stepIntervalUs), _timeoutMs(timeoutMs) {}
+  : _stepIntervalUs(stepIntervalUs), _timeoutMs(timeoutMs) {
+  _in[0] = in1; _in[1] = in2; _in[2] = in3; _in[3] = in4;
+}
 
 void Aufzug::begin() {
-  pinMode(_pinStep,   OUTPUT);
-  pinMode(_pinDir,    OUTPUT);
-  pinMode(_pinEnable, OUTPUT);
-  _motorAus();   // Treiber deaktiviert starten (kein Strom auf den Motor)
+  for (uint8_t i = 0; i < 4; i++) pinMode(_in[i], OUTPUT);
+  _motorAus();   // Spulen stromlos starten
+}
+
+void Aufzug::_schreibeSequenz(uint8_t idx) {
+  for (uint8_t i = 0; i < 4; i++)
+    digitalWrite(_in[i], HALBSCHRITT[idx][i] ? HIGH : LOW);
+}
+
+void Aufzug::_motorEin(bool aufwaerts) {
+  _richtung      = aufwaerts ? +1 : -1;
+  _letzterStepUs = micros();
+}
+
+void Aufzug::_motorAus() {
+  for (uint8_t i = 0; i < 4; i++) digitalWrite(_in[i], LOW);   // alle Spulen aus
 }
 
 void Aufzug::fahreZu(Etage ziel) {
@@ -43,12 +68,12 @@ void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2
     return;
   }
 
-  // Motor weitertakten (nicht-blockierend, kein delay()).
+  // Motor weitertakten (nicht-blockierend): naechste Halbschritt-Phase setzen.
   unsigned long jetztUs = micros();
   if (jetztUs - _letzterStepUs >= _stepIntervalUs) {
     _letzterStepUs = jetztUs;
-    digitalWrite(_pinStep, HIGH);
-    digitalWrite(_pinStep, LOW);   // ein STEP-Puls = ein Vollschritt
+    _seqIndex = (uint8_t)((_seqIndex + _richtung + 8) % 8);   // +1 auf / -1 ab
+    _schreibeSequenz(_seqIndex);
   }
 }
 
@@ -57,18 +82,8 @@ void Aufzug::fehlerQuittieren() {
     _motorAus();
     _zustand = Zustand::STEHT;
     // Hinweis: _aktuelleEtage bleibt auf dem letzten bekannten Stand. Eine
-    // Referenzfahrt (z.B. Richtung EG bis Endschalter) kann hier spaeter rein.
+    // Referenzfahrt (Richtung EG bis Endschalter) kann hier spaeter rein.
   }
-}
-
-void Aufzug::_motorEin(bool aufwaerts) {
-  digitalWrite(_pinDir, aufwaerts ? HIGH : LOW);
-  digitalWrite(_pinEnable, LOW);   // A4988/DRV8825: ENABLE aktiv LOW
-  _letzterStepUs = micros();
-}
-
-void Aufzug::_motorAus() {
-  digitalWrite(_pinEnable, HIGH);  // Treiber deaktivieren, kein Motorstrom
 }
 
 bool Aufzug::_endschalterFuer(Etage e, bool eg, bool og1, bool og2) const {

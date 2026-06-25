@@ -87,8 +87,8 @@ void loop() {
   // 2) Soll bilden (Regel-Schichten - weitere folgen spaeter in Regelung)
   Soll soll;
   tageszeitRegeln(k, soll);
-  // sensorRegeln(k, soll);   // folgt
-  handRegeln(k, soll);        // Hand-Modus (Etagen-Taster): Heizen/Kuehlen "hart an"
+  sensorRegeln(k, soll);
+  handRegeln(k, soll);
   dashboardRegeln(soll, gDash);
 
   // 3) Konflikte prioritaetsbewusst aufloesen
@@ -102,17 +102,6 @@ void loop() {
   static uint32_t t = 0;
   if (millis() - t >= 1000) { t = millis(); debugAusgabe(k, soll); }
 }
-
-// Taster/Reeds entprellt lesen und Etagen-Klima-Modus (mit TTL) fortschalten.
-void eingaengeLesen(Kontext& k) {
-  digitalInputUpdate();
-  if (geradeGedrueckt(Eingang::TASTER_EG))  tasterWeiterschalten(gTaster, 0);
-  if (geradeGedrueckt(Eingang::TASTER_OG1)) tasterWeiterschalten(gTaster, 1);
-  if (geradeGedrueckt(Eingang::TASTER_OG2)) tasterWeiterschalten(gTaster, 2);
-  tasterTick(gTaster);   // abgelaufene Hand-Modi -> Automatik
-  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) k.klimaModus[e] = tasterModus(gTaster, e);
-}
-
 // =============================================================================
 //  ANWENDEN  –  Soll-Zustand auf die Module uebertragen (EINZIGE Hardware-Stelle)
 // =============================================================================
@@ -201,4 +190,14 @@ void debugAusgabe(const Kontext& k, const Soll& s) {
   letzteLoops = gLoops;
   Serial.printf("          Loops gesamt=%u  (~%u/s)\n",
                 (unsigned)gLoops, (unsigned)proSekunde);
+}
+
+// Taster/Reeds entprellt lesen und Etagen-Klima-Modus (mit TTL) fortschalten.
+void eingaengeLesen(Kontext& k) {
+  digitalInputUpdate();
+  if (geradeGedrueckt(Eingang::TASTER_EG))  tasterWeiterschalten(gTaster, 0);
+  if (geradeGedrueckt(Eingang::TASTER_OG1)) tasterWeiterschalten(gTaster, 1);
+  if (geradeGedrueckt(Eingang::TASTER_OG2)) tasterWeiterschalten(gTaster, 2);
+  tasterTick(gTaster);   // abgelaufene Hand-Modi -> Automatik
+  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) k.klimaModus[e] = tasterModus(gTaster, e);
 }

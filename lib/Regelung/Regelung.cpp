@@ -82,47 +82,18 @@ else if (nacht) {
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
     setze(s.disco, 1, PRIO_ZEIT_BASIS);
 }
-
-  // Sperre (schlaegt Sensor): nachts bleiben ALLE Jalousien zu.
-  /*
-  if (k.phase == Phase::NACHT)
-    for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
-      for (uint8_t seite = 0; seite < ANZ_SEITEN; seite++)
-        setze(s.jalousie[e][seite], 100, PRIO_ZEIT_SPERRE);
-  */
-  // TODO: morgens Jalousie auf, feinere Sollwert-Profile, Nachtruhe (Disco aus) ...
 }
-/*
+
+
 // =============================================================================
 //  Schicht: SENSOREN  (Prio 40)
 // =============================================================================
 void sensorRegeln(const Kontext& k, Soll& s) {
-  // Klima-Hysterese je Etage - NUR im Automatik-Modus.
-  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
-    if (k.klimaModus[e] != KlimaModus::AUTOMATIK) continue;
-    float soll = sollTemperatur(k.phase);
-    float ist  = k.temperatur[e];
-    if (ist < soll - HYSTERESE)      setze(s.heizung[e],  1, PRIO_SENSOR);
-    else if (ist > soll + HYSTERESE) setze(s.kuehlLed[e], 1, PRIO_SENSOR);
-    // im Hysterese-Band: nichts setzen -> bleibt aus (Basiswert)
-  }
-  */
-  /* Licht: Bewegung UND dunkel -> Etagenlicht voll an.
-  if (k.bewegung && k.helligkeit < DUNKEL_LUX)
-    for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
-      setze(s.licht[e], 3, PRIO_SENSOR);
-
-  // Beschattung: sonnenzugewandte Seite bei viel Licht beschatten.
-  if (k.helligkeit > SONNE_HELL_LUX && k.sonnenSeite >= 0)
-    for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
-      setze(s.jalousie[e][k.sonnenSeite], 100, PRIO_SENSOR);
-  
-  // TODO: weitere Sensor-Regeln (Feuchte, PIR pro Etage, CO2, ...).
+ 
 }
-  */
 
 // =============================================================================
-//  Schicht: DASHBOARD  (Pi-Befehle, Prio 80)
+//  Schicht: DASHBOARD  (Befehle vom Pi, Prio 80)
 // =============================================================================
 void dashboardRegeln(Soll& s, DashboardState& dash) {
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
@@ -140,6 +111,22 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
   if (dashAktiv(dash.skylight2)) setze(s.dachfensterOG2, dash.skylight2.wert ? 100 : 0, PRIO_DASHBOARD);
   // TODO: mode/tv/skylight1/garage/front_door/elevator haben (noch) kein Soll-Feld
 }
+
+// =============================================================================
+//  Schicht: HANDEINGRIFF  (Etagen-Klima-Taster, "hart an", Prio 100)
+// =============================================================================
+void handRegeln(const Kontext& k, Soll& s) {
+  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
+    switch (k.klimaModus[e]) {
+      case KlimaModus::HEIZEN:    setze(s.heizung[e],  1, PRIO_HAND); break;
+      case KlimaModus::KUEHLEN:   setze(s.kuehlLed[e], 1, PRIO_HAND); break;
+      case KlimaModus::AUTOMATIK: break;   // nichts -> Sensor/Tageszeit entscheiden
+    }
+  }
+}
+
+
+
 
 // ─── Etagen-Modus per Taster (Hand) mit TTL ──────────────────────────────────
 // Bei jedem Tastendruck einen Modus weiterschalten und die TTL neu aufziehen.
@@ -165,22 +152,6 @@ KlimaModus tasterModus(const TasterState& ts, uint8_t e) {
 }
 
 // =============================================================================
-//  Schicht: HANDEINGRIFF  (Etagen-Klima-Taster, "hart an", Prio 100)
-// =============================================================================
-//  Modus kommt aus k.klimaModus[] (vom Taster gesetzt, mit TTL). "Hart an":
-//  Heizen/Kuehlen werden mit Prio 100 FEST gesetzt (Temperatur egal).
-void handRegeln(const Kontext& k, Soll& s) {
-  for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
-    switch (k.klimaModus[e]) {
-      case KlimaModus::HEIZEN:    setze(s.heizung[e],  1, PRIO_HAND); break;
-      case KlimaModus::KUEHLEN:   setze(s.kuehlLed[e], 1, PRIO_HAND); break;
-      case KlimaModus::AUTOMATIK: break;   // nichts -> Sensor/Tageszeit entscheiden
-    }
-  }
-  // TODO: weitere Handeingriffe (z.B. Disco-Taster) hier ergaenzen.
-}
-
-// =============================================================================
 //  INTERLOCKS  –  Konflikte prioritaetsbewusst aufloesen
 //  (abgeleitete Schreibvorgaenge mit der Prio ihres Ausloesers)
 // =============================================================================
@@ -201,14 +172,11 @@ void interlocks(Soll& s) {
     // Heizen -> Klappe zu (mit Prio des Heizens, damit der Sensor sie nicht oeffnet).
     if (heizen) setze(s.klappe[e], 0, s.heizung[e].prio);
 
-    // Kuehlen -> Lueftung (Klappe auf + OG2-Dachfenster) kommt SPAETER mit der
-    // Klima-Logik. Vorerst schaltet (manuelles) Kuehlen NUR die blaue Kuehl-LED,
-    // damit beim Kuehlen keine Dachfenster-Servos fahren.
-    // if (kuehlen) {
-    //   setze(s.klappe[e], 100, s.kuehlLed[e].prio);
-    //   setze(s.dachfensterOG2, 100, s.kuehlLed[e].prio);
-    // }
-    (void)kuehlen;   // aktuell nur fuer den Heizen/Kuehlen-Ausschluss gebraucht
+    // Kuehlen -> Klappe auf + zentrales Dachfenster auf (Prio des Kuehlens).
+    if (kuehlen) {
+      setze(s.klappe[e], 100, s.kuehlLed[e].prio);
+      setze(s.dachfensterOG2, 100, s.kuehlLed[e].prio);
+    }
   }
 
   // Zentrale Klimaanlage = ODER ueber alle Etagen mit offener Klappe (= Luftbedarf).

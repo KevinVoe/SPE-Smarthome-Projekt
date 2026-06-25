@@ -64,7 +64,10 @@ void Kommunikation::sendeStatus(const char* feld, bool  an) {
 String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   JsonDocument doc;
   doc["type"] = "telemetry";
-  doc["time"] = 0;
+  // Simulierte Uhrzeit (Stunden), quantisiert auf 10 Sim-Minuten: aendert sich
+  // nur alle 10 Sim-Min -> der Frame-Vergleich loest NICHT jede Loop ein Senden
+  // aus, sondern hoechstens alle 10 Sim-Minuten (plus Heartbeat).
+  doc["time"] = floorf(k.stunde * 6.0f) / 6.0f;   // 6 Slots/h = 10-Minuten-Raster
   doc["temp"]     = (k.temperatur[0] + k.temperatur[1] + k.temperatur[2]) / 3.0f;
   doc["humidity"] = 0;      // TODO: keine Quelle in Soll/Kontext (Feuchtesensor)
 

@@ -108,6 +108,17 @@ constexpr int SENSORIK_DHT_TYP = 22;   // DHT-Typ (DHT11 oder DHT22)
 constexpr int      DISCO_STRIP_PIN   = 0;
 constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
 
+// =============================================================================
+//  AUFZUG  (Schrittmotor 28BYJ-48 ueber ULN2003: IN1-IN4 = Halbschritt-Sequenz)
+//  4 benachbarte, freie Output-Pins auf der linken ESP32-Leiste.
+// =============================================================================
+constexpr int      AUFZUG_IN1 = 25;
+constexpr int      AUFZUG_IN2 = 26;
+constexpr int      AUFZUG_IN3 = 27;
+constexpr int      AUFZUG_IN4 = 14;
+constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 1500;   // Halbschritt-Takt (28BYJ-48 ist langsam)
+constexpr uint32_t AUFZUG_TIMEOUT_MS        = 15000;  // Not-Aus, falls Ziel-Endschalter nie kommt
+
 // ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
 //  Fuer weitere Module (Kuehlung, Fenster, Jalousie) hier ergaenzen, z.B.:
 //      constexpr IoPin KUEHLUNG_EG_LED = espPin(13);

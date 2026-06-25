@@ -1,15 +1,18 @@
 // =============================================================================
-//  Aufzug  –  STEUERUNGSKLASSE fuer den Schrittmotor-Aufzug (STEP/DIR/ENABLE)
+//  Aufzug  –  STEUERUNGSKLASSE fuer den Schrittmotor-Aufzug
+//             (28BYJ-48 ueber ULN2003: IN1-IN4, Halbschritt-Sequenz)
 // -----------------------------------------------------------------------------
-//  Steuert NUR den Motor (ESP32-GPIOs direkt - kein Io mehr). Endschalter liest
-//  der Aufzug NICHT selbst: main reicht die bereinigten Pegel an update() weiter.
+//  Steuert NUR den Motor (ESP32-GPIOs direkt). Endschalter liest der Aufzug
+//  NICHT selbst: der Aufrufer reicht die bereinigten Pegel an update() weiter.
 //
-//      Aufzug aufzug(STEP, DIR, ENABLE, AUFZUG_STEP_INTERVALL_US, AUFZUG_TIMEOUT_MS);
+//      Aufzug aufzug(IN1, IN2, IN3, IN4, AUFZUG_STEP_INTERVALL_US, AUFZUG_TIMEOUT_MS);
 //      aufzug.fahreZu(Aufzug::Etage::OG2);
 //      aufzug.update(endEg, endOg1, endOg2);   // 1x pro loop()
 //
+//  Antrieb: unipolarer Schrittmotor, 8-Phasen-HALBSCHRITT. "auf"/"ab" = Sequenz
+//  vorwaerts/rueckwaerts; "Motor aus" = alle 4 Spulen-Pins LOW (stromlos).
 //  ENDSCHALTER = einzige Wahrheit (keine Schrittzaehlung). Timeout schuetzt vor
-//  Dauerlauf. Vollschritt: ein STEP-Puls = ein Schritt; ENABLE aktiv LOW.
+//  Dauerlauf, falls ein Endschalter nicht ausloest.
 // =============================================================================
 #pragma once
 #include <Arduino.h>
@@ -22,7 +25,7 @@ public:
     STEHT, FAEHRT_AUF, FAEHRT_AB, FEHLER
   };
 
-  Aufzug(int pinStep, int pinDir, int pinEnable,
+  Aufzug(int in1, int in2, int in3, int in4,
          uint32_t stepIntervalUs, uint32_t timeoutMs);
 
   void begin();
@@ -37,14 +40,17 @@ public:
 private:
   void _motorEin(bool richtungAufwaerts);
   void _motorAus();
+  void _schreibeSequenz(uint8_t idx);
   bool _endschalterFuer(Etage e, bool eg, bool og1, bool og2) const;
 
-  int _pinStep, _pinDir, _pinEnable;       // ESP32-GPIOs (native)
+  int      _in[4];                  // IN1..IN4 (ULN2003)
   uint32_t _stepIntervalUs, _timeoutMs;
 
-  Zustand _zustand       = Zustand::STEHT;
-  Etage   _aktuelleEtage = Etage::EG;
-  Etage   _zielEtage     = Etage::EG;
+  Zustand  _zustand       = Zustand::STEHT;
+  Etage    _aktuelleEtage = Etage::EG;
+  Etage    _zielEtage     = Etage::EG;
+  int8_t   _richtung      = +1;     // +1 = aufwaerts, -1 = abwaerts (Sequenzrichtung)
+  uint8_t  _seqIndex      = 0;      // 0..7 (Halbschritt-Phase)
   unsigned long _letzterStepUs = 0;
   unsigned long _fahrtStartMs  = 0;
 };
