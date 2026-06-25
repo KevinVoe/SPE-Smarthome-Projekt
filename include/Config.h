@@ -41,9 +41,12 @@ constexpr uint8_t MCPOUT_KUEHLEN[3] = { 3, 4, 5 };   // blaue LED je Etage
 //  DIGITALE EINGAENGE  (am MCP-IN, INPUT_PULLUP; aktiv/geschlossen = LOW)
 // =============================================================================
 constexpr uint8_t  MCPIN_TASTER[3]   = { 0, 1, 2 };  // Klima-Modus-Taster je Etage
-constexpr uint8_t  MCPIN_REED_TUER   = 8;            // Tuerkontakt
-constexpr uint8_t  MCPIN_REED_AUFZUG = 9;            // Aufzug-Ueberwachung
+constexpr uint8_t  MCPIN_AUFZUG_TASTER[3] = { 3, 4, 5 };  // Aufzug-Taster je Etage
+constexpr uint8_t  MCPIN_REED_AUFZUG[3] = {6, 7, 8};            // Aufzug-Ueberwachung
+constexpr uint8_t  MCPIN_NOTSTOPP_AUFZUG = 9;            // Notstopp-Aufzug
+constexpr uint8_t  MCPIN_REED_TUER   = 10;            // Tuerkontakt
 constexpr uint32_t TASTER_TTL_MS     = 10000;        // Hand-Modus -> danach Automatik
+
 
 // =============================================================================
 //  SERVOS am PCA9685  (Kanal + Endlagen-Ticks je Servo - pro Servo EINMESSEN!)
@@ -76,7 +79,6 @@ constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 500 };
 constexpr uint8_t LOW_BRIGHTNESS_DUTY_CYCLE    = 30;
 constexpr uint8_t MEDIUM_BRIGHTNESS_DUTY_CYCLE = 120;
 
-//  Anzahl Kanaele (Hardware-Maximum: 6 – softwareseitig fest verdrahtet)
 constexpr uint8_t LICHT_MAX_KANAELE = 6;
 
 //  GPIO-Pins der 6 MOSFET-Gates (nur PWM-faehige Pins des ESP32 verwenden!)
@@ -100,44 +102,11 @@ constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
 constexpr int SENSORIK_DHT_PIN = 13;   // DHT11/22-Datenpin (GPIO13)
 constexpr int SENSORIK_DHT_TYP = 22;   // DHT-Typ (DHT11 oder DHT22)
 
-
-
-// =============================================================================
-//  SICHERHEIT  (Reed-Kontakte, PIR, Alarmrelais, Buzzer)
-// =============================================================================
-// (Sicherheit/Alarm spaeter: Reed-Kontakte ueber DigitalInput, Relais/Buzzer
-//  ueber DigitaleOutputs - Pin-Nummern dann als MCPIN_/MCPOUT_-Konstanten hier.)
-
 // =============================================================================
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
 // =============================================================================
 constexpr int      DISCO_STRIP_PIN   = 0;
 constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
-
-// =============================================================================
-//  ZEITTAKTE / ABTASTRATEN  (alles nicht-blockierend, millis-basiert)
-// =============================================================================
-/*constexpr uint32_t TAKT_TASTER_ENTPRELL_MS = 50;    // Tasterentprellung
-constexpr uint32_t TAKT_SENSOR_MS          = 1000;  // Sensoren einlesen
-constexpr uint32_t TAKT_STATUS_SENDEN_MS   = 1000;  // Status an den Pi senden
-constexpr IoPin AUFZUG_TASTER_EG  = espPin(19);
-constexpr IoPin AUFZUG_TASTER_OG1 = espPin(21);
-constexpr IoPin AUFZUG_TASTER_OG2 = espPin(22);
-*/
-
-//  AUFZUG  –  Ruftasten je Etage + Endschalter je Etage + Motortreiber
-//  (A4988/DRV8825-Familie: STEP/DIR/ENABLE, Vollschritt, kein Microstepping)
-/*constexpr IoPin AUFZUG_ENDSCHALTER_EG  = espPin(23);
-constexpr IoPin AUFZUG_ENDSCHALTER_OG1 = espPin(25);
-constexpr IoPin AUFZUG_ENDSCHALTER_OG2 = espPin(26);
-
-constexpr IoPin AUFZUG_MOTOR_STEP   = espPin(27);
-constexpr IoPin AUFZUG_MOTOR_DIR    = espPin(32);
-constexpr IoPin AUFZUG_MOTOR_ENABLE = espPin(33);
-
-constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;    // Zeit zwischen 2 STEP-Pulsen (Tempo)
-constexpr uint32_t AUFZUG_TIMEOUT_MS        = 8000;   // Sicherheits-Abschaltung
-*/
 
 // ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
 //  Fuer weitere Module (Kuehlung, Fenster, Jalousie) hier ergaenzen, z.B.:

@@ -71,8 +71,8 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   doc["humidity"] = 0;      // TODO: keine Quelle in Soll/Kontext (Feuchtesensor)
 
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
-  outdoor["ext_light"] = s.licht[1].wert;      // TODO: keine Quelle in Soll/Kontext (Aussenbeleuchtung)
-  outdoor["door_light"] = s.licht[0].wert;
+  outdoor["ext_light"] = s.licht[0].wert;      // TODO: keine Quelle in Soll/Kontext (Aussenbeleuchtung)
+  outdoor["door_light"] = s.licht[1].wert;
   outdoor["whirlpool"] = 0;
   outdoor["garage"] = 0;
   outdoor["front_door"] = 0;
