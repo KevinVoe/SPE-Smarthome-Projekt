@@ -30,7 +30,10 @@ public:
 
   void begin();
   void fahreZu(Etage ziel);
-  void update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2);
+  // endschalterEg/Og1/Og2 = Etagen-Reeds; ueberfahrOben = oberer Sicherheits-
+  // schalter (Kabine zu weit oben) -> sofort Not-Stopp + FEHLER.
+  void update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2,
+              bool ueberfahrOben);
 
   Zustand zustand()       const { return _zustand; }
   Etage   aktuelleEtage() const { return _aktuelleEtage; }

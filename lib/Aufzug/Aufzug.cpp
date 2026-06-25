@@ -50,8 +50,16 @@ void Aufzug::fahreZu(Etage ziel) {
   _zustand = aufwaerts ? Zustand::FAEHRT_AUF : Zustand::FAEHRT_AB;
 }
 
-void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2) {
+void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2,
+                    bool ueberfahrOben) {
   if (_zustand != Zustand::FAEHRT_AUF && _zustand != Zustand::FAEHRT_AB) return;
+
+  // Hoechste Prioritaet: oberer Ueberfahr-Schalter -> Kabine zu weit oben -> Not-Stopp.
+  if (ueberfahrOben) {
+    _motorAus();
+    _zustand = Zustand::FEHLER;
+    return;
+  }
 
   // Sicherheit: Timeout (Endschalter defekt / Seil blockiert / Motor blockiert).
   if (millis() - _fahrtStartMs > _timeoutMs) {

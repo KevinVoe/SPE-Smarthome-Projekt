@@ -19,7 +19,9 @@
 // Reihenfolge = interner Index. Neuer Eingang -> hier + in DigitalInput.cpp (pinVon).
 enum class Eingang : uint8_t {
   TASTER_EG, TASTER_OG1, TASTER_OG2,   // Klima-Modus-Taster je Etage
-  REED_TUER, REED_AUFZUG_EG, REED_AUFZUG_OG1, REED_AUFZUG_OG2,  // Reed-Kontakte (Tuer / Aufzug)
+  REED_TUER,                                         // Tuerkontakt
+  REED_AUFZUG_EG, REED_AUFZUG_OG1, REED_AUFZUG_OG2,  // Aufzug-Etagen-Reeds (je Etage einer)
+  REED_AUFZUG_OBEN,                                  // oberer Ueberfahr-Schalter (Sicherheit)
   ANZAHL
 };
 

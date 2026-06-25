@@ -15,14 +15,12 @@ namespace {
       case Eingang::TASTER_EG:   return MCPIN_TASTER[0];
       case Eingang::TASTER_OG1:  return MCPIN_TASTER[1];
       case Eingang::TASTER_OG2:  return MCPIN_TASTER[2];
-      case Eingang::REED_TUER:   return MCPIN_REED_TUER;
-      // TODO(Aufzug): Enum hat jetzt 3 Aufzug-Reeds, Config aber nur EIN
-      // MCPIN_REED_AUFZUG. Interim: Pins 6/7/8 (7,8 sind frei). Bitte in Config
-      // final als Array MCPIN_REED_AUFZUG[3] festlegen und hier referenzieren.
-      case Eingang::REED_AUFZUG_EG:  return MCPIN_REED_AUFZUG;       // Pin 6
-      case Eingang::REED_AUFZUG_OG1: return MCPIN_REED_AUFZUG + 1;   // Pin 7
-      case Eingang::REED_AUFZUG_OG2: return MCPIN_REED_AUFZUG + 2;   // Pin 8
-      default:                   return 0;
+      case Eingang::REED_TUER:        return MCPIN_REED_TUER;
+      case Eingang::REED_AUFZUG_EG:   return MCPIN_REED_AUFZUG[0];
+      case Eingang::REED_AUFZUG_OG1:  return MCPIN_REED_AUFZUG[1];
+      case Eingang::REED_AUFZUG_OG2:  return MCPIN_REED_AUFZUG[2];
+      case Eingang::REED_AUFZUG_OBEN: return MCPIN_REED_AUFZUG_OBEN;
+      default:                        return 0;
     }
   }
 
