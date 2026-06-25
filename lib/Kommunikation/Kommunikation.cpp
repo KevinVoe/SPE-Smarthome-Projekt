@@ -64,14 +64,12 @@ void Kommunikation::sendeStatus(const char* feld, bool  an) {
 String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   JsonDocument doc;
   doc["type"] = "telemetry";
-  doc["time"] = 0;  //TODO: simulierte Uhrzeit übergeben
-  // temp: Mittelwert ueber alle Etagen (Kontext). Falls eine bestimmte Etage
-  // gewuenscht ist, hier anpassen.
+  doc["time"] = 0;
   doc["temp"]     = (k.temperatur[0] + k.temperatur[1] + k.temperatur[2]) / 3.0f;
   doc["humidity"] = 0;      // TODO: keine Quelle in Soll/Kontext (Feuchtesensor)
 
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
-  outdoor["ext_light"] = s.licht[0].wert;      // TODO: keine Quelle in Soll/Kontext (Aussenbeleuchtung)
+  outdoor["ext_light"] = s.licht[0].wert;
   outdoor["door_light"] = s.licht[1].wert;
   outdoor["whirlpool"] = 0;
   outdoor["garage"] = 0;
@@ -90,8 +88,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   eg["mode"]   = 0;   // TODO: keine 0..4-Quelle (klimaModus deckt nur 0..2)
   eg["blind1"] = jalousieZuBlind(s.jalousie[0][0].wert);
   eg["blind2"] = jalousieZuBlind(s.jalousie[0][1].wert);
-  eg["heat1"]  = s.heizung[0].wert;   // Soll kennt nur 1 Heizwert/Etage ->
-  eg["heat2"]  = s.heizung[0].wert;   //   auf beide Heizkreise gespiegelt
+  eg["heat"]  = s.heizung[0].wert;   // Soll kennt nur 1 Heizwert/Etage ->
   eg["light"]  = s.licht[2].wert;     // Stufe 0..3
  
   // ── E1 (Soll-Index 1) ────────────────────────────────────────────────────
@@ -99,21 +96,16 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   e1["mode"]   = 0;   // TODO
   e1["blind1"] = jalousieZuBlind(s.jalousie[1][0].wert);
   e1["blind2"] = jalousieZuBlind(s.jalousie[1][1].wert);
-  e1["heat1"]  = s.heizung[1].wert;
-  e1["heat2"]  = s.heizung[1].wert;
+  e1["heat"]  = s.heizung[1].wert;
   e1["light"]  = s.licht[3].wert;
   e1["tv"]     = 0;   // TODO: keine Quelle (Fernseher)
-  
-                      //       Hier bewusst Blanko, damit das Schema (party @E1)
-                      //       erfuellt ist; echte Quelle fuer E1-Party fehlt.
  
   // ── E2 / OG2 (Soll-Index 2) ──────────────────────────────────────────────
   JsonObject e2 = floors["E2"].to<JsonObject>();
   e2["mode"]   = 0;   // TODO
   e2["blind1"] = jalousieZuBlind(s.jalousie[2][0].wert);
   e2["blind2"] = jalousieZuBlind(s.jalousie[2][1].wert);
-  e2["heat1"]  = s.heizung[2].wert;
-  e2["heat2"]  = s.heizung[2].wert;
+  e2["heat"]  = s.heizung[2].wert;
   e2["light"]  = s.licht[4].wert;
   e2["party"]  = s.disco.wert;
  
@@ -163,6 +155,8 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "heat1") ||
            !strcmp(cmd, "heat2")) { if (et >= 0) dashSetze(dash.heat[et],  val); }
   else if (!strcmp(cmd, "light"))  { if (et >= 0) dashSetze(dash.light[et], val); }
+  else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
+  else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
   else if (!strcmp(cmd, "mode"))   { if (et >= 0) dashSetze(dash.mode[et],  val); }
   else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
   else if (!strcmp(cmd, "ac"))         dashSetze(dash.ac,         val);

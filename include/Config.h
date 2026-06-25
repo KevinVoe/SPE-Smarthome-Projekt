@@ -42,7 +42,7 @@ constexpr uint8_t MCPOUT_KUEHLEN[3] = { 3, 4, 5 };   // blaue LED je Etage
 // =============================================================================
 constexpr uint8_t  MCPIN_TASTER[3]   = { 0, 1, 2 };  // Klima-Modus-Taster je Etage
 constexpr uint8_t  MCPIN_AUFZUG_TASTER[3] = { 3, 4, 5 };  // Aufzug-Taster je Etage
-constexpr uint8_t  MCPIN_REED_AUFZUG[3] = {6, 7, 8};            // Aufzug-Ueberwachung
+constexpr uint8_t  MCPIN_REED_AUFZUG = 6;            // Aufzug-Ueberwachung
 constexpr uint8_t  MCPIN_NOTSTOPP_AUFZUG = 9;            // Notstopp-Aufzug
 constexpr uint8_t  MCPIN_REED_TUER   = 10;            // Tuerkontakt
 constexpr uint32_t TASTER_TTL_MS     = 10000;        // Hand-Modus -> danach Automatik

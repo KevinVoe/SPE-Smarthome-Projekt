@@ -146,8 +146,10 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
         setze(s.jalousie[e][seite], dash.blind[e][seite].wert ? 0 : 100, PRIO_DASHBOARD);
 
     if (dashAktiv(dash.heat[e]))  setze(s.heizung[e], dash.heat[e].wert,  PRIO_DASHBOARD);
-    if (dashAktiv(dash.light[e])) setze(s.licht[e],   dash.light[e].wert, PRIO_DASHBOARD);
+    if (dashAktiv(dash.light[e])) setze(s.licht[e+2],   dash.light[e].wert, PRIO_DASHBOARD);
   }
+  if(dashAktiv(dash.ext_light))  setze(s.licht[0], dash.ext_light.wert,  PRIO_DASHBOARD);
+  if(dashAktiv(dash.door_light)) setze(s.licht[1], dash.door_light.wert, PRIO_DASHBOARD);
   if (dashAktiv(dash.party))     setze(s.disco,          dash.party.wert,               PRIO_DASHBOARD);
   if (dashAktiv(dash.ac))        setze(s.klimaanlage,    dash.ac.wert,                  PRIO_DASHBOARD);
   if (dashAktiv(dash.skylight2)) setze(s.dachfensterOG2, dash.skylight2.wert ? 100 : 0, PRIO_DASHBOARD);
