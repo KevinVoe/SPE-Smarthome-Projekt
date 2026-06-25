@@ -181,7 +181,6 @@ KlimaModus tasterModus(const TasterState& ts, uint8_t e) {
 //  INTERLOCKS  –  Konflikte prioritaetsbewusst aufloesen
 //  (abgeleitete Schreibvorgaenge mit der Prio ihres Ausloesers)
 // =============================================================================
-/*
 void interlocks(Soll& s) {
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
     bool heizen  = s.heizung[e].wert  != 0;
@@ -215,7 +214,17 @@ void interlocks(Soll& s) {
     }
   setze(s.klimaanlage, acAn ? 1 : 0, acPrio);
 
-  // Disco (OG2) an -> Licht OG2 (Kanal 2) aus.
-  if (s.disco.wert != 0) setze(s.licht[OG2], 0, s.disco.prio);
+  // Disco (OG2) und OG2-Raumlicht schliessen sich aus (selber Raum). Der hoeher
+  // Priorisierte gewinnt; bei Gleichstand gewinnt die Disco.
+  // ACHTUNG: OG2-Raumlicht ist Soll-Kanal 4 (Config: K4 = OG2_Licht),
+  //          NICHT licht[OG2]=licht[2] (das waere das EG-Licht)!
+  constexpr uint8_t LICHT_OG2 = 4;
+  bool discoAn    = (s.disco.wert != 0);
+  bool og2LichtAn = (s.licht[LICHT_OG2].wert != 0);
+  if (discoAn && og2LichtAn) {
+    if (s.disco.prio >= s.licht[LICHT_OG2].prio)
+      setze(s.licht[LICHT_OG2], 0, s.disco.prio);   // Disco gewinnt -> Licht aus
+    else
+      setze(s.disco, 0, s.licht[LICHT_OG2].prio);   // Licht gewinnt -> Disco aus
+  }
 }
-  */
