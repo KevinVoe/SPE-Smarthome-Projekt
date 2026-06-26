@@ -38,14 +38,21 @@ void Aufzug::_motorAus() {
 }
 
 void Aufzug::fahreZu(Etage ziel) {
-  if (_zustand == Zustand::FAEHRT_AUF || _zustand == Zustand::FAEHRT_AB) return;  // faehrt schon
-  if (_zustand == Zustand::FEHLER) return;                                        // erst quittieren
-  if (ziel == _aktuelleEtage) return;                                             // schon da
+  if (_zustand == Zustand::FEHLER) return;                            // erst quittieren
+  if (_zustand == Zustand::STEHT && ziel == _aktuelleEtage) return;   // schon da
 
   _zielEtage    = ziel;
-  _fahrtStartMs = millis();
+  _fahrtStartMs = millis();   // Timeout-Fenster neu aufziehen
 
-  bool aufwaerts = (static_cast<uint8_t>(ziel) > static_cast<uint8_t>(_aktuelleEtage));
+  // Richtung aus der zuletzt bekannten Etage. Bei laufender Fahrt fuehrt update()
+  // _aktuelleEtage auf JEDEN passierten Reed nach -> die Richtung stimmt auch fuer
+  // einen Zielwechsel MITTEN in der Fahrt (z.B. unterwegs OG1->OG2, dann EG -> dreht um).
+  bool aufwaerts;
+  if      (static_cast<uint8_t>(ziel) > static_cast<uint8_t>(_aktuelleEtage)) aufwaerts = true;
+  else if (static_cast<uint8_t>(ziel) < static_cast<uint8_t>(_aktuelleEtage)) aufwaerts = false;
+  else  // Ziel == zuletzt passierte Etage, aber noch in Fahrt -> umkehren
+    aufwaerts = (_zustand == Zustand::FAEHRT_AB);
+
   _motorEin(aufwaerts);
   _zustand = aufwaerts ? Zustand::FAEHRT_AUF : Zustand::FAEHRT_AB;
 }
@@ -68,11 +75,17 @@ void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2
     return;
   }
 
-  // Zielerreichung: passender Endschalter = einzige Wahrheit (keine Schrittzaehlung).
-  if (_endschalterFuer(_zielEtage, endschalterEg, endschalterOg1, endschalterOg2)) {
+  // Position nachfuehren: welcher Etagen-Reed ist GERADE aktiv? Auch beim
+  // Passieren einer Zwischen-Etage -> _aktuelleEtage bleibt aktuell (wichtig
+  // fuer einen Richtungswechsel mitten in der Fahrt).
+  if      (endschalterEg)  _aktuelleEtage = Etage::EG;
+  else if (endschalterOg1) _aktuelleEtage = Etage::OG1;
+  else if (endschalterOg2) _aktuelleEtage = Etage::OG2;
+
+  // Ziel erreicht? (Reed der Zieletage = einzige Wahrheit, keine Schrittzaehlung)
+  if (_aktuelleEtage == _zielEtage) {
     _motorAus();
-    _aktuelleEtage = _zielEtage;
-    _zustand       = Zustand::STEHT;
+    _zustand = Zustand::STEHT;
     return;
   }
 

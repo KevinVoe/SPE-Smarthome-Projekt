@@ -10,6 +10,7 @@
 
 // ── Dashboard-Override mit Time-To-Live ─────────────────────────────────────
 constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 30 s - hier konfigurierbar
+constexpr uint32_t FREEZE_TTL_MS    = 300000; // Automatik-Stopp vom Dashboard: nach 5 min zurueck auf Automatik
 
 // =============================================================================
 //  I2C-BUS  (gemeinsam: 2x MCP23017 + PCA9685)
@@ -99,8 +100,9 @@ constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
 // =============================================================================
 //  Sensorik (DHT11/22, Ultraschall, Solarpanel)
 // =============================================================================
-constexpr int SENSORIK_DHT_PIN = 13;   // DHT11/22-Datenpin (GPIO13)
-constexpr int SENSORIK_DHT_TYP = 22;   // DHT-Typ (DHT11 oder DHT22)
+constexpr int SENSORIK_DHT_PIN   = 13;   // DHT11/22-Datenpin (GPIO13)
+constexpr int SENSORIK_DHT_TYP   = 22;   // DHT-Typ (DHT11 oder DHT22)
+constexpr int SENSORIK_SOLAR_PIN = 36;   // Solarpanel ueber 50/50-Teiler an ADC1 (Sensor VP, input-only)
 
 // =============================================================================
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)

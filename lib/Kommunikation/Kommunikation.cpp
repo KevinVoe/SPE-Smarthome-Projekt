@@ -68,8 +68,9 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   // nur alle 10 Sim-Min -> der Frame-Vergleich loest NICHT jede Loop ein Senden
   // aus, sondern hoechstens alle 10 Sim-Minuten (plus Heartbeat).
   doc["time"] = floorf(k.stunde * 6.0f) / 6.0f;   // 6 Slots/h = 10-Minuten-Raster
-  doc["temp"]     = (k.temperatur[0] + k.temperatur[1] + k.temperatur[2]) / 3.0f;
-  doc["humidity"] = 0;      // TODO: keine Quelle in Soll/Kontext (Feuchtesensor)
+  doc["temp"]     = k.temperatur;   // EIN Sensor fuers ganze Haus
+  doc["humidity"] = k.feuchte;
+  doc["auto_active"] = !k.automatikAus;   // true = Automatik laeuft, false = eingefroren (Handbetrieb)
 
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
   outdoor["ext_light"] = s.licht[0].wert;
@@ -79,7 +80,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   outdoor["front_door"] = 0;
 
   JsonObject roof = doc["roof"].to<JsonObject>();
-  roof["pv_voltage"] = 0.0f;                                  // TODO: keine Quelle (PV-Sensor)
+  roof["pv_voltage"] = k.pvSpannung;                          // Solar-Spannung (V)
   roof["skylight1"]  = 0;                                     // TODO: kein Soll-Feld (EG-Dachfenster)
   roof["skylight2"]  = klappeZuBool(s.dachfensterOG2.wert);   // OG2/E2
   roof["ac"]         = s.klimaanlage.wert;                    // 0/1
@@ -169,4 +170,5 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "garage"))     dashSetze(dash.garage,     val);
   else if (!strcmp(cmd, "front_door")) dashSetze(dash.front_door, val);
   else if (!strcmp(cmd, "elevator"))   dashSetze(dash.elevator,   val);
+  else if (!strcmp(cmd, "auto_stop"))  freezeSetze(dash.autostop, val != 0);  // Automatik einfrieren/freigeben
 }

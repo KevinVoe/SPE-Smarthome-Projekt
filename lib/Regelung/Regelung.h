@@ -64,12 +64,15 @@ struct Soll {
 struct Kontext {
   float      stunde      = 0.0f;          // simulierte Uhrzeit 0..24
   Phase      phase       = Phase::TAG;
-  float      temperatur[ANZ_ETAGEN] = { 21.0f, 21.0f, 21.0f };
+  float      temperatur  = 21.0f;         // EIN Sensor fuers ganze Haus (°C)
+  float      feuchte     = 50.0f;         // relative Feuchte (%rF)
+  float      pvSpannung  = 0.0f;          // Solar-Spannung (V)
   float      helligkeit  = 100.0f;        // Lux
   bool       bewegung    = false;         // PIR (vorerst vereinfacht global)
   int8_t     sonnenSeite = -1;            // -1 keine, 0 links, 1 rechts
   KlimaModus klimaModus[ANZ_ETAGEN] = { KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK };
   bool       discoWunsch = false;
+  bool       automatikAus = false;        // true = Automatik (Tageszeit+Sensor) eingefroren
 };
 
 // ─── Dashboard-Override (Befehle vom Raspberry Pi) ───────────────────────────
@@ -87,6 +90,7 @@ struct DashboardState {
   DashBefehl mode[ANZ_ETAGEN];
   DashBefehl party, ac, skylight2;
   DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
+  DashBefehl autostop;   // Automatik-Stopp (Freeze) vom Dashboard - eigene TTL (FREEZE_TTL_MS)
 };
 
 // ─── Etagen-Modus per Taster (Hand) mit TTL - parallel zu DashboardState ─────
@@ -106,7 +110,9 @@ KlimaModus tasterModus(const TasterState& ts, uint8_t etage);    // aktueller Mo
 inline void setze(Feld& f, int16_t wert, uint8_t prio) {
   if (prio >= f.prio) { f.wert = wert; f.prio = prio; }
 }
-void dashSetze(DashBefehl& b, int wert);              // Wert setzen + TTL aufziehen
+void dashSetze(DashBefehl& b, int wert);                // Wert setzen + TTL aufziehen
+void freezeSetze(DashBefehl& b, bool an);              // Automatik-Stopp setzen/loesen (FREEZE_TTL_MS)
+bool automatikEingefroren(const DashboardState& dash); // true = Automatik aktuell eingefroren
 
 float  berechneTageszeit(uint32_t jetztMs, uint32_t tagLaengeMs);   // -> 0..24 h
 Phase  phaseAus(float stunde);

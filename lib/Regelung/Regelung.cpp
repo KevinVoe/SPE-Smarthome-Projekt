@@ -40,6 +40,17 @@ void dashSetze(DashBefehl& b, int wert) {
   b.deadline = millis() + DASHBOARD_TTL_MS;
 }
 
+// Automatik-Stopp (Freeze) vom Dashboard: eigene, laengere TTL (FREEZE_TTL_MS).
+void freezeSetze(DashBefehl& b, bool an) {
+  if (an) { b.wert = 1; b.deadline = millis() + FREEZE_TTL_MS; }
+  else    { b.wert = 0; }   // sofort wieder freigeben
+}
+
+// true, wenn der Automatik-Stopp aktiv (und nicht abgelaufen) ist. Nicht-mutierend.
+bool automatikEingefroren(const DashboardState& dash) {
+  return (dash.autostop.wert > 0) && ((int32_t)(millis() - dash.autostop.deadline) < 0);
+}
+
 // =============================================================================
 //  Schicht: TAGESZEIT  (Basis Prio 10 + Sperren Prio 60)
 // =============================================================================

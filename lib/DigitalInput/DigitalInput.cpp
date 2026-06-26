@@ -15,6 +15,9 @@ namespace {
       case Eingang::TASTER_EG:   return MCPIN_TASTER[0];
       case Eingang::TASTER_OG1:  return MCPIN_TASTER[1];
       case Eingang::TASTER_OG2:  return MCPIN_TASTER[2];
+      case Eingang::AUFZUG_TASTER_EG:  return MCPIN_AUFZUG_TASTER[0];
+      case Eingang::AUFZUG_TASTER_OG1: return MCPIN_AUFZUG_TASTER[1];
+      case Eingang::AUFZUG_TASTER_OG2: return MCPIN_AUFZUG_TASTER[2];
       case Eingang::REED_TUER:        return MCPIN_REED_TUER;
       case Eingang::REED_AUFZUG_EG:   return MCPIN_REED_AUFZUG[0];
       case Eingang::REED_AUFZUG_OG1:  return MCPIN_REED_AUFZUG[1];
