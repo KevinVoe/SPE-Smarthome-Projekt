@@ -1,20 +1,16 @@
 // =============================================================================
-//  Sensorik  –  Temperatur und Feuchte ueber DHT-Sensor (DHT11 oder DHT22)
+//  Sensorik  –  Klimasensorik + Bodenfeuchte
 // -----------------------------------------------------------------------------
-//  Ein einziger DHT-Sensor liefert BEIDE Werte (Temperatur + Feuchte) ueber
-//  ein einzelnes Datenkabel an GPIO 13.
+//  Zwei Sensoren in einem Modul:
 //
-//  Wie es funktioniert:
-//    - Der ESP32 schickt einen kurzen Startimpuls auf das Datenkabel
-//    - Der DHT antwortet mit einem 40-Bit-Datenpaket (Temp + Feuchte + Pruefsumme)
-//    - Das Modul liest dieses Paket aus und speichert die Werte intern
-//    - update() macht das einmal pro 2 Sekunden (DHT braucht diese Pause)
+//  1. DHT11 / DHT22  (GPIO 25, digitales Protokoll, 1 Datenkabel)
+//     → Liefert Lufttemperatur und Luftfeuchte
+//     → Wird alle 2 Sekunden abgefragt
 //
-//  Aufruf aus main.cpp:
-//    sensorik.begin();              // einmal in setup()
-//    sensorik.update();             // einmal pro loop()
-//    float t = sensorik.temperatur();
-//    float f = sensorik.feuchte();
+//  2. Water Sensor  (GPIO 34, analoges Signal)
+//     → Misst Bodenfeuchte: trocken = hoher ADC-Wert, nass = niedriger Wert
+//     → Wird auf 0..100% umgerechnet (0 = trocken, 100 = nass)
+//     → SENSORIK_WASSER_TROCKEN / _NASS in Config.h einmessen!
 // =============================================================================
 #pragma once
 #include <Arduino.h>
@@ -22,20 +18,21 @@
 
 class Sensorik {
 public:
-  Sensorik();             // initialisiert DHT mit Pin + Typ aus Config.h
+  Sensorik();
   void begin();
-  void update();          // zyklisch aufrufen (intern: nur alle 2s neu einlesen)
+  void update();
 
-  float temperatur();     // Grad Celsius, z.B. 22.5
-  float feuchte();        // Relative Feuchte in %, z.B. 48.0
+  float temperatur();     // Lufttemperatur in Grad C
+  float feuchte();        // Luftfeuchte in %
+  float bodenfeuchte();   // Bodenfeuchte in % (0=trocken, 100=nass)
 
-  // Letzter Lesezyklus erfolgreich? (false = Sensor nicht angeschlossen/defekt)
   bool istOk() const { return _ok; }
 
 private:
-  DHT      _dht;                  // DHT-Treiber-Objekt
-  float    _temp    = 0.0f;
-  float    _feuchte = 0.0f;
-  bool     _ok      = false;
-  uint32_t _letzt   = 0;
+  DHT      _dht;
+  float    _temp         = 0.0f;
+  float    _luftFeuchte  = 0.0f;
+  float    _bodenFeuchte = 0.0f;
+  bool     _ok           = false;
+  uint32_t _letzt        = 0;
 };

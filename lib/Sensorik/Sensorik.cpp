@@ -5,27 +5,41 @@ Sensorik::Sensorik() : _dht(SENSORIK_DHT_PIN, SENSORIK_DHT_TYP) {}
 
 void Sensorik::begin() {
   _dht.begin();
+  pinMode(SENSORIK_WASSER_PIN, INPUT);
 }
 
 void Sensorik::update() {
-  // DHT11/22 brauchen mindestens 2 Sekunden zwischen zwei Messungen
-  if (millis() - _letzt < 2000) return;
-  _letzt = millis();
+  // ── DHT11/22: nur alle 2 Sekunden ─────────────────────────────────────────
+  if (millis() - _letzt >= 2000) {
+    _letzt = millis();
 
-  float t = _dht.readTemperature();
-  float f = _dht.readHumidity();
+    float t = _dht.readTemperature();
+    float f = _dht.readHumidity();
 
-  // isnan() prueft ob der Sensor einen ungueltigen Wert geliefert hat
-  // (passiert wenn der Sensor nicht angeschlossen ist)
-  if (isnan(t) || isnan(f)) {
-    _ok = false;
-    return;
+    if (isnan(t) || isnan(f)) {
+      _ok = false;
+    } else {
+      _temp        = t;
+      _luftFeuchte = f;
+      _ok          = true;
+    }
   }
 
-  _temp    = t;
-  _feuchte = f;
-  _ok      = true;
+  // ── Water Sensor: analog, jeden loop() lesbar ──────────────────────────────
+  //  Hoher Rohwert = trocken, niedriger Rohwert = nass → daher invertiert mappen
+  int rohwert = analogRead(SENSORIK_WASSER_PIN);
+
+  float prozent = map(rohwert,
+                      SENSORIK_WASSER_TROCKEN,
+                      SENSORIK_WASSER_NASS,
+                      0, 100);
+
+  if (prozent < 0)   prozent = 0;
+  if (prozent > 100) prozent = 100;
+
+  _bodenFeuchte = prozent;
 }
 
-float Sensorik::temperatur() { return _temp; }
-float Sensorik::feuchte()    { return _feuchte; }
+float Sensorik::temperatur()   { return _temp; }
+float Sensorik::feuchte()      { return _luftFeuchte; }
+float Sensorik::bodenfeuchte() { return _bodenFeuchte; }

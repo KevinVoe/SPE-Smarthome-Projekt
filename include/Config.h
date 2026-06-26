@@ -1,133 +1,115 @@
 // =============================================================================
 //  Config.h  –  ZENTRALE Konfiguration des Smarthomes
-// -----------------------------------------------------------------------------
-//  AKTUELLER STAND: Simulationsaufbau auf dem Breadboard.
-//  Alle Pins liegen direkt am ESP32 (kein MCP23017 - kommt erst, wenn die
-//  echte Verkabelung mit allen Modulen ansteht).
 // =============================================================================
 #pragma once
-#include <Arduino.h>   // uint8_t / uint16_t / uint32_t
-
-// ── Dashboard-Override mit Time-To-Live ─────────────────────────────────────
-constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 30 s - hier konfigurierbar
+#include "Io.h"
 
 // =============================================================================
-//  I2C-BUS  (gemeinsam: 2x MCP23017 + PCA9685)
-// -----------------------------------------------------------------------------
-//  MCP-IN  = nur Eingaenge (alle Pins INPUT_PULLUP, von Io::begin gesetzt)
-//  MCP-OUT = nur Ausgaenge (Transistoren, active-high: HIGH = leitet)
-//  Adressen ueber A0/A1/A2 am MCP einstellen.
+//  MODUS-TASTER
 // =============================================================================
-constexpr int     PIN_SDA      = 21;
-constexpr int     PIN_SCL      = 22;
-constexpr uint8_t ADDR_MCP_IN  = 0x20;   // MCP23017 #1 - Eingaenge
-constexpr uint8_t ADDR_MCP_OUT = 0x24;   // MCP23017 #2 - Ausgaenge (A2=high; Test mit 1 MCP)
-constexpr uint8_t ADDR_PCA9685 = 0x40;   // PWM-Treiber (Servos)
+constexpr IoPin MODUS_TASTER_EG  = espPin(4);
+constexpr IoPin MODUS_TASTER_OG1 = espPin(16);
+constexpr IoPin MODUS_TASTER_OG2 = espPin(17);
 
 // =============================================================================
-//  DOMAIN-TYPEN  (gemeinsame Aufzaehlungen fuer alle Module + Regelung)
+//  HEIZUNG
 // =============================================================================
-enum class Etage    : uint8_t { EG = 0, OG1 = 1, OG2 = 2 };
-enum class Seite    : uint8_t { LINKS = 0, RECHTS = 1 };
-enum class Position : uint8_t { ZU = 0, AUF = 1 };
+constexpr IoPin HEIZUNG_EG_LED  = espPin(2);
+constexpr IoPin HEIZUNG_OG1_LED = espPin(15);
+constexpr IoPin HEIZUNG_OG2_LED = espPin(18);
 
 // =============================================================================
-//  DIGITALE AUSGAENGE  (Transistoren am MCP-OUT, active-high)  Index = Etage
-// =============================================================================
-constexpr uint8_t MCPOUT_HEIZEN[3]  = { 0, 1, 2 };   // rote LED je Etage
-constexpr uint8_t MCPOUT_KUEHLEN[3] = { 3, 4, 5 };   // blaue LED je Etage
-
-// =============================================================================
-//  DIGITALE EINGAENGE  (am MCP-IN, INPUT_PULLUP; aktiv/geschlossen = LOW)
-// =============================================================================
-constexpr uint8_t  MCPIN_TASTER[3]   = { 0, 1, 2 };  // Klima-Modus-Taster je Etage
-constexpr uint8_t  MCPIN_REED_TUER   = 8;            // Tuerkontakt
-constexpr uint8_t  MCPIN_REED_AUFZUG = 9;            // Aufzug-Ueberwachung
-constexpr uint32_t TASTER_TTL_MS     = 10000;        // Hand-Modus -> danach Automatik
-
-// =============================================================================
-//  SERVOS am PCA9685  (Kanal + Endlagen-Ticks je Servo - pro Servo EINMESSEN!)
-//  Jalousie: [Etage][Seite] | Dachfenster: [Seite] (beide im OG2) | Garage: 1
-// =============================================================================
-struct ServoEndlage { uint8_t kanal; uint16_t tickZu; uint16_t tickAuf; };
-
-constexpr ServoEndlage SERVO_JALOUSIE[3][2] = {
-  { {0, 150, 500}, {1, 150, 500} },   // EG  links / rechts
-  { {2, 150, 500}, {3, 150, 500} },   // OG1 links / rechts
-  { {4, 150, 500}, {5, 150, 500} },   // OG2 links / rechts
-};
-constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
-  {6, 150, 500},   // OG2 links
-  {7, 150, 500},   // OG2 rechts
-};
-constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 500 };
-
-
-// =============================================================================
-//  LICHT  (12V LED-Strips ueber IRLZ44N-MOSFETs, PWM vom ESP32)
-// -----------------------------------------------------------------------------
-//  Dimmstufen (global fuer alle Kanaele):
-//    Stufe 0 = aus         -> Duty-Cycle 0
-//    Stufe 1 = low         -> LOW_BRIGHTNESS_DUTY_CYCLE
-//    Stufe 2 = medium      -> MEDIUM_BRIGHTNESS_DUTY_CYCLE
-//    Stufe 3 = voll        -> 255
-//  Werte 0-255 (analogWrite-Skala).
+//  LICHT  (PWM ueber MOSFET)
 // =============================================================================
 constexpr uint8_t LOW_BRIGHTNESS_DUTY_CYCLE    = 30;
 constexpr uint8_t MEDIUM_BRIGHTNESS_DUTY_CYCLE = 120;
+constexpr uint8_t LICHT_MAX_KANAELE            = 6;
 
-//  Anzahl Kanaele (Hardware-Maximum: 6 – softwareseitig fest verdrahtet)
-constexpr uint8_t LICHT_MAX_KANAELE = 6;
-
-//  GPIO-Pins der 6 MOSFET-Gates (nur PWM-faehige Pins des ESP32 verwenden!)
-//  Reihenfolge = Kanal-Index: Kanal 0 -> LICHT_PIN_K0, usw.
-constexpr int LICHT_PIN_K0 = 2; // Außen_licht
-constexpr int LICHT_PIN_K1 = 4; // Tür_licht
-constexpr int LICHT_PIN_K2 = 5; // EG_Licht
-constexpr int LICHT_PIN_K3 = 18; // OG1_Licht
-constexpr int LICHT_PIN_K4 = 19; // OG2_Licht
-constexpr int LICHT_PIN_K5 = 23; //Reserve
-
-//  PWM-Ticks (0..4095) fuer die Endlagen - pro Servo einmal einmessen!
-constexpr uint16_t SERVO_TICK_ZU  = 150;   // ~ 0°
-constexpr uint16_t SERVO_TICK_AUF = 500;   // ~ 90°
-
-constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
+constexpr int LICHT_PIN_K0 = 18;
+constexpr int LICHT_PIN_K1 = 19;
+constexpr int LICHT_PIN_K2 = 21;
+constexpr int LICHT_PIN_K3 = 22;
+constexpr int LICHT_PIN_K4 = 23;
+constexpr int LICHT_PIN_K5 = 5;
 
 // =============================================================================
-//  Sensorik (DHT11/22, Ultraschall, Solarpanel)
+//  JALOUSIEN  (je 2 Servos pro Etage am PCA9685)
 // =============================================================================
-constexpr int SENSORIK_DHT_PIN = 13;   // DHT11/22-Datenpin (GPIO13)
-constexpr int SENSORIK_DHT_TYP = 22;   // DHT-Typ (DHT11 oder DHT22)
+constexpr uint8_t JALOUSIE_EG_LINKS_KANAL   = 0;
+constexpr uint8_t JALOUSIE_EG_RECHTS_KANAL  = 1;
+constexpr uint8_t JALOUSIE_OG1_LINKS_KANAL  = 2;
+constexpr uint8_t JALOUSIE_OG1_RECHTS_KANAL = 3;
+constexpr uint8_t JALOUSIE_DG_LINKS_KANAL   = 4;
+constexpr uint8_t JALOUSIE_DG_RECHTS_KANAL  = 5;
 
+constexpr uint16_t JALOUSIE_TICK_ZU  = 102;
+constexpr uint16_t JALOUSIE_TICK_AUF = 512;
 
-
-// =============================================================================
-//  SICHERHEIT  (Reed-Kontakte, PIR, Alarmrelais, Buzzer)
-// =============================================================================
-// (Sicherheit/Alarm spaeter: Reed-Kontakte ueber DigitalInput, Relais/Buzzer
-//  ueber DigitaleOutputs - Pin-Nummern dann als MCPIN_/MCPOUT_-Konstanten hier.)
-
-// =============================================================================
-//  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
-// =============================================================================
-constexpr int      DISCO_STRIP_PIN   = 0;
-constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
+constexpr IoPin JALOUSIE_TASTER_EG  = mcpPin(13);
+constexpr IoPin JALOUSIE_TASTER_OG1 = mcpPin(14);
+constexpr IoPin JALOUSIE_TASTER_DG  = mcpPin(15);
 
 // =============================================================================
-//  ZEITTAKTE / ABTASTRATEN  (alles nicht-blockierend, millis-basiert)
+//  DACHFENSTER / GARAGENTOR
 // =============================================================================
-/*constexpr uint32_t TAKT_TASTER_ENTPRELL_MS = 50;    // Tasterentprellung
-constexpr uint32_t TAKT_SENSOR_MS          = 1000;  // Sensoren einlesen
-constexpr uint32_t TAKT_STATUS_SENDEN_MS   = 1000;  // Status an den Pi senden
+constexpr uint8_t SERVO_DACHFENSTER_OG2 = 6;
+constexpr uint8_t SERVO_DACHFENSTER_OG1 = 7;
+constexpr uint8_t SERVO_GARAGENTOR      = 8;
+
+constexpr uint16_t SERVO_TICK_ZU  = 150;
+constexpr uint16_t SERVO_TICK_AUF = 500;
+
+// =============================================================================
+//  SENSORIK  –  DHT11 (Luft) + Water Sensor (Boden)
+// -----------------------------------------------------------------------------
+//  DHT11: GPIO 25, Signal / VCC 3,3V / GND
+//         Pinbelegung Modul: links = Signal, mitte = VCC, rechts = GND
+//
+//  Water Sensor: S → GPIO 34, + → GPIO 26, - → GND
+//         GPIO 26 schaltet VCC nur kurz beim Messen (Korrosionsschutz!)
+//
+//  Kalibrierung Water Sensor:
+//         Sensor trocken in Luft → Serial Monitor → Wert bei TROCKEN eintragen
+//         Sensor in Wasser       → Serial Monitor → Wert bei NASS eintragen
+// =============================================================================
+constexpr int     SENSORIK_DHT_PIN = 25;
+constexpr uint8_t SENSORIK_DHT_TYP = DHT11;   // DHT11 oder DHT22
+
+constexpr int SENSORIK_WASSER_PIN     = 34;   // Signal (analog)
+constexpr int SENSORIK_WASSER_PWR     = 26;   // VCC (wird geschaltet)
+constexpr int SENSORIK_WASSER_TROCKEN = 3000; // einmessen und anpassen!
+constexpr int SENSORIK_WASSER_NASS    = 1000; // einmessen und anpassen!
+
+// =============================================================================
+//  SICHERHEIT
+// =============================================================================
+constexpr IoPin REED_TUER_EG     = mcpPin(5);
+constexpr IoPin REED_FENSTER_OG  = mcpPin(6);
+constexpr IoPin PIR_SCHLAFZIMMER = mcpPin(4);
+constexpr IoPin ALARM_RELAIS     = mcpPin(11);
+constexpr IoPin ALARM_BUZZER     = mcpPin(12);
+
+// =============================================================================
+//  DISCOLIGHT
+// =============================================================================
+constexpr int      DISCO_STRIP_PIN   = 18;
+constexpr uint16_t DISCO_ANZAHL_LEDS = 8;
+
+// =============================================================================
+//  ZEITTAKTE
+// =============================================================================
+constexpr uint32_t TAKT_TASTER_ENTPRELL_MS = 50;
+constexpr uint32_t TAKT_SENSOR_MS          = 1000;
+constexpr uint32_t TAKT_STATUS_SENDEN_MS   = 1000;
+
+// =============================================================================
+//  AUFZUG
+// =============================================================================
 constexpr IoPin AUFZUG_TASTER_EG  = espPin(19);
 constexpr IoPin AUFZUG_TASTER_OG1 = espPin(21);
 constexpr IoPin AUFZUG_TASTER_OG2 = espPin(22);
-*/
 
-//  AUFZUG  –  Ruftasten je Etage + Endschalter je Etage + Motortreiber
-//  (A4988/DRV8825-Familie: STEP/DIR/ENABLE, Vollschritt, kein Microstepping)
-/*constexpr IoPin AUFZUG_ENDSCHALTER_EG  = espPin(23);
+constexpr IoPin AUFZUG_ENDSCHALTER_EG  = espPin(23);
 constexpr IoPin AUFZUG_ENDSCHALTER_OG1 = espPin(25);
 constexpr IoPin AUFZUG_ENDSCHALTER_OG2 = espPin(26);
 
@@ -135,10 +117,5 @@ constexpr IoPin AUFZUG_MOTOR_STEP   = espPin(27);
 constexpr IoPin AUFZUG_MOTOR_DIR    = espPin(32);
 constexpr IoPin AUFZUG_MOTOR_ENABLE = espPin(33);
 
-constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;    // Zeit zwischen 2 STEP-Pulsen (Tempo)
-constexpr uint32_t AUFZUG_TIMEOUT_MS        = 8000;   // Sicherheits-Abschaltung
-*/
-
-// ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
-//  Fuer weitere Module (Kuehlung, Fenster, Jalousie) hier ergaenzen, z.B.:
-//      constexpr IoPin KUEHLUNG_EG_LED = espPin(13);
+constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;
+constexpr uint32_t AUFZUG_TIMEOUT_MS        = 8000;
