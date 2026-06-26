@@ -156,8 +156,7 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
 
   if      (!strcmp(cmd, "blind1")) { if (et >= 0) dashSetze(dash.blind[et][0], val); }
   else if (!strcmp(cmd, "blind2")) { if (et >= 0) dashSetze(dash.blind[et][1], val); }
-  else if (!strcmp(cmd, "heat1") ||
-           !strcmp(cmd, "heat2")) { if (et >= 0) dashSetze(dash.heat[et],  val); }
+  else if (!strcmp(cmd, "heat"))   { if (et >= 0) dashSetze(dash.heat[et],  val); }
   else if (!strcmp(cmd, "light"))  { if (et >= 0) dashSetze(dash.light[et], val); }
   else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
   else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
@@ -170,5 +169,5 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "garage"))     dashSetze(dash.garage,     val);
   else if (!strcmp(cmd, "front_door")) dashSetze(dash.front_door, val);
   else if (!strcmp(cmd, "elevator"))   dashSetze(dash.elevator,   val);
-  else if (!strcmp(cmd, "auto_stop"))  freezeSetze(dash.autostop, val != 0);  // Automatik einfrieren/freigeben
+  else if (!strcmp(cmd, "hand"))  freezeSetze(dash.autostop, val != 0);  // Automatik einfrieren/freigeben
 }

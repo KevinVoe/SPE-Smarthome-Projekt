@@ -35,8 +35,8 @@ enum class Position : uint8_t { ZU = 0, AUF = 1 };
 // =============================================================================
 //  DIGITALE AUSGAENGE  (Transistoren am MCP-OUT, active-high)  Index = Etage
 // =============================================================================
-constexpr uint8_t MCPOUT_HEIZEN[3]  = { 0, 1, 2 };   // rote LED je Etage
-constexpr uint8_t MCPOUT_KUEHLEN[3] = { 3, 4, 5 };   // blaue LED je Etage
+constexpr uint8_t MCPOUT_HEIZEN[3]  = { 3, 4, 5 };   // rote LED je Etage
+constexpr uint8_t MCPOUT_KUEHLEN[3] = { 2, 1, 0 };   // blaue LED je Etage
 
 // =============================================================================
 //  DIGITALE EINGAENGE  (am MCP-IN, INPUT_PULLUP; aktiv/geschlossen = LOW)
@@ -114,10 +114,10 @@ constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
 //  AUFZUG  (Schrittmotor 28BYJ-48 ueber ULN2003: IN1-IN4 = Halbschritt-Sequenz)
 //  4 benachbarte, freie Output-Pins auf der linken ESP32-Leiste.
 // =============================================================================
-constexpr int      AUFZUG_IN1 = 25;
-constexpr int      AUFZUG_IN2 = 26;
-constexpr int      AUFZUG_IN3 = 27;
-constexpr int      AUFZUG_IN4 = 14;
+constexpr int      AUFZUG_IN1 = 14;
+constexpr int      AUFZUG_IN2 = 27;
+constexpr int      AUFZUG_IN3 = 26;
+constexpr int      AUFZUG_IN4 = 25;
 constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 1000;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
 constexpr uint32_t AUFZUG_TIMEOUT_MS        = 15000;  // Not-Aus, falls Ziel-Endschalter nie kommt
 
