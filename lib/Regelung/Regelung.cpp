@@ -68,6 +68,9 @@ void tageszeitRegeln(const Kontext& k, Soll& s) {
     setze(s.licht[3], 1, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 1, PRIO_ZEIT_BASIS);
     setze(s.disco, 0, PRIO_ZEIT_BASIS);
+    setze(s.heizung[0], 1, PRIO_ZEIT_BASIS);
+    setze(s.heizung[1], 1, PRIO_ZEIT_BASIS);
+    setze(s.heizung[2], 1, PRIO_ZEIT_BASIS);
 }
 else if (tag) {
     setze(s.licht[0], 0, PRIO_ZEIT_BASIS);
