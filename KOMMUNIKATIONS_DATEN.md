@@ -136,13 +136,13 @@ Eine JSON-Zeile pro Befehl:
 | `whirlpool` | `0 / 1` | Whirlpool an/aus |
 | `skylight1` | `0 / 1` | OG2-Dachfenster (1 = auf) |
 | `skylight2` | `0 / 1` | OG2-Dachfenster (1 = auf) – wirkt aufs selbe Fenster wie skylight1 |
+| `elevator` | `0 / 1 / 2` | **Aufzug in Zieletage rufen** (0 = EG, 1 = OG1, 2 = OG2). Wird empfangen & gespeichert; die **Fahrt-Anbindung folgt** noch |
 | `hand` | `0 / 1` | **Autostop / Automatik einfrieren**, s. §5 |
 
 ### 4.4 (Noch) ohne Wirkung
 Diese Befehle werden **angenommen** (kein Fehler), haben aber derzeit **keinen
-Aktor / kein Soll-Feld**, d. h. sie bewirken nichts:
-`tv`, `garage`, `front_door`, `elevator`.
-(Der Aufzug fährt aktuell nur über die physischen Ruftaster am Haus.)
+Aktor**, d. h. sie bewirken noch nichts: `tv`, `garage`.
+(`front_door` ist entfallen und wird nicht kommen.)
 
 ### 4.5 Beispiele
 ```json
@@ -196,7 +196,8 @@ damit Tageszeit + Sensorik, werden aber vom Hand-Taster am Haus (100) übersteue
 
 ### Befristung der Befehle (TTL)
 - Ein normaler Dashboard-Befehl ist **nur `DASHBOARD_TTL_MS` lang aktiv** und fällt
-  danach zurück auf die Automatik. **Aktueller Wert im Code: `3000` ms (= 3 s).**
+  danach zurück auf die Automatik. **Aktueller Wert: `3000` ms (= 3 s) – Testwert,
+  wird später erhöht.**
   → Um einen Zustand dauerhaft zu halten, muss der Pi den Befehl **periodisch
   wiederholen** (z. B. alle 1–2 s).
 - Ausnahme: `hand` (Autostop) hat seine eigene TTL von **5 min** (s. §5).

@@ -9,7 +9,7 @@
 #include <Arduino.h>   // uint8_t / uint16_t / uint32_t
 
 // ── Dashboard-Override mit Time-To-Live ─────────────────────────────────────
-constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 30 s - hier konfigurierbar
+constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 3 s (Testwert): Override-Dauer; Pi muss Befehle wiederholen, sonst Automatik
 constexpr uint32_t FREEZE_TTL_MS    = 300000; // Automatik-Stopp vom Dashboard: nach 5 min zurueck auf Automatik
 
 // =============================================================================

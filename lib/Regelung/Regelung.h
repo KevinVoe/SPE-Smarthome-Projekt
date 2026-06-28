@@ -91,7 +91,7 @@ struct DashboardState {
   DashBefehl party, skylight2;
   DashBefehl ac[ANZ_ETAGEN];   // Kuehlung PRO ETAGE (blaue LED); zentrale Anlage leitet der ESP32 ab
   DashBefehl whirlpool;   // Pool an/aus (Soll-Feld vorhanden)
-  DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
+  DashBefehl tv, skylight1, garage, elevator;  // tv/garage: noch kein Aktor; elevator: Zieletage 0/1/2 (Fahrt folgt)
   DashBefehl autostop;   // Automatik-Stopp (Freeze) vom Dashboard - eigene TTL (FREEZE_TTL_MS)
 };
 

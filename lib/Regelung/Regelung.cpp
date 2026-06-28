@@ -149,7 +149,7 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
   // Zentrale Klimaanlage (s.klimaanlage) wird NICHT direkt vom Dashboard gesetzt:
   // interlocks() schaltet sie = ODER(kuehlen[Etage]). Das Dashboard steuert die
   // Kuehlung pro Etage ueber dash.ac[] (genau wie dash.heat[] die Heizung).
-  // TODO: tv/skylight1/garage/front_door/elevator haben (noch) kein Soll-Feld
+  // TODO: tv/garage haben (noch) keinen Aktor; elevator-Zieletage wird gespeichert (Fahrt folgt)
 }
 
 // =============================================================================

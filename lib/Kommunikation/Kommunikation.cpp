@@ -168,7 +168,6 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "skylight1"))  dashSetze(dash.skylight1,  val);
   else if (!strcmp(cmd, "tv"))         dashSetze(dash.tv,         val);
   else if (!strcmp(cmd, "garage"))     dashSetze(dash.garage,     val);
-  else if (!strcmp(cmd, "front_door")) dashSetze(dash.front_door, val);
-  else if (!strcmp(cmd, "elevator"))   dashSetze(dash.elevator,   val);
+  else if (!strcmp(cmd, "elevator"))   dashSetze(dash.elevator,   val);   // value = Zieletage 0/1/2 (Fahrt-Anbindung folgt)
   else if (!strcmp(cmd, "hand"))  freezeSetze(dash.autostop, val != 0);  // Automatik einfrieren/freigeben
 }
