@@ -126,6 +126,25 @@ constexpr int      AUFZUG_IN4 = 25;
 constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 1000;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
 constexpr uint32_t AUFZUG_TIMEOUT_MS        = 15000;  // Not-Aus, falls Ziel-Endschalter nie kommt
 
+// =============================================================================
+//  WHIRLPOOL  (DC-Motor ueber MOSFET, PWM vom ESP32)
+// -----------------------------------------------------------------------------
+//  Die Regelung schaltet den Pool nur AN/AUS; im An-Zustand liegt ein FESTER
+//  Duty-Cycle an (Drehzahl wird nicht geregelt / nicht vom Dashboard verstellt).
+// =============================================================================
+constexpr int     WHIRLPOOL_PIN  = 32;   // freier PWM-faehiger Pin
+constexpr uint8_t WHIRLPOOL_DUTY = 200;  // fester Duty (0..255), wenn der Pool laeuft
+
+// =============================================================================
+//  KLIMAANLAGE / AC  (zentrale Anlage ueber MOSFET, PWM vom ESP32)
+// -----------------------------------------------------------------------------
+//  KEIN direkter Dashboard-Zugriff: interlocks() bestimmt den Duty anhand der
+//  ANZAHL kuehlender Etagen (1/2/3). Werte 0..255 (analogWrite-Skala), einmessen.
+// =============================================================================
+constexpr int     KLIMA_AC_PIN    = 33;  // freier PWM-faehiger Pin
+constexpr uint8_t AC_DUTY_1ETAGE  = 100; // genau 1 Etage kuehlt
+constexpr uint8_t AC_DUTY_2ETAGEN = 180; // 2 Etagen kuehlen
+constexpr uint8_t AC_DUTY_3ETAGEN = 255; // alle 3 Etagen kuehlen
+
 // ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
-//  Fuer weitere Module (Kuehlung, Fenster, Jalousie) hier ergaenzen, z.B.:
-//      constexpr IoPin KUEHLUNG_EG_LED = espPin(13);
+//  Noch frei: GPIO 12 + 15 (Boot-Strapping, mit Vorsicht), 35/39 (nur Eingang).

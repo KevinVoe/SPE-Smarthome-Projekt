@@ -76,7 +76,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
   outdoor["ext_light"] = s.licht[0].wert;
   outdoor["door_light"] = s.licht[1].wert;
-  outdoor["whirlpool"] = 0;
+  outdoor["whirlpool"] = s.whirlpool.wert;   // 0/1 (an/aus)
   outdoor["garage"] = 0;
   outdoor["front_door"] = 0;
 
@@ -84,7 +84,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   roof["pv_voltage"] = k.pvSpannung;                          // Solar-Spannung (V)
   roof["skylight1"]  = klappeZuBool(s.dachfensterOG2.wert);   // beide Dachfenster sind im OG2
   roof["skylight2"]  = klappeZuBool(s.dachfensterOG2.wert);   // (ein Soll-Feld steuert beide)
-  roof["ac"]         = s.klimaanlage.wert;                    // 0/1
+  roof["ac"]         = (s.klimaanlage.wert > 0) ? 1 : 0;      // 0/1 (Duty intern, hier nur an/aus)
  
   JsonObject floors = doc["floors"].to<JsonObject>();
  
@@ -162,6 +162,7 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
   else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
   else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
+  else if (!strcmp(cmd, "whirlpool"))  dashSetze(dash.whirlpool,  val);
   else if (!strcmp(cmd, "ac"))     { if (et >= 0) dashSetze(dash.ac[et], val); }
   else if (!strcmp(cmd, "skylight2"))  dashSetze(dash.skylight2,  val);
   else if (!strcmp(cmd, "skylight1"))  dashSetze(dash.skylight1,  val);

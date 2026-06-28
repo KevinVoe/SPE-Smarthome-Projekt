@@ -69,6 +69,8 @@ void setup() {
   disco.begin();
   sensorik.begin();         // DHT + Solar
   aufzug.begin();           // Schrittmotor-Pins (IN1-4)
+  analogWrite(KLIMA_AC_PIN, 0);    // zentrale AC (PWM) sicher aus
+  analogWrite(WHIRLPOOL_PIN, 0);   // Whirlpool (PWM) sicher aus
 
   // Link zum Raspberry Pi (UART2: RX=16, TX=17)
   Link.begin(115200, SERIAL_8N1, 16, 17);
@@ -200,7 +202,19 @@ void anwenden(const Soll& s) {
   Position dachPos = s.dachfensterOG2.wert >= 50 ? Position::AUF : Position::ZU;
   fahreDachfenster(dachPos, Seite::LINKS);
   fahreDachfenster(dachPos, Seite::RECHTS);
-  // Hinweis: s.klimaanlage hat (noch) keinen physischen Ausgang - nur Logik/Telemetrie.
+
+  // ── Klimaanlage (AC) + Whirlpool: PWM-Ausgaenge (nur bei Aenderung) ─────────
+  static int16_t letztAc = -1;
+  if (s.klimaanlage.wert != letztAc) {
+    analogWrite(KLIMA_AC_PIN, (uint8_t)s.klimaanlage.wert);   // Duty 0..255 (Stufe = Etagenzahl)
+    letztAc = s.klimaanlage.wert;
+  }
+  static int16_t letztPool = -1;
+  int16_t poolDuty = s.whirlpool.wert ? WHIRLPOOL_DUTY : 0;   // an = fester Duty, aus = 0
+  if (poolDuty != letztPool) {
+    analogWrite(WHIRLPOOL_PIN, (uint8_t)poolDuty);
+    letztPool = poolDuty;
+  }
 
   // ── Disco (NeoPixel) ───────────────────────────────────────────────────────
   static uint8_t letzterDisco = 0;
@@ -239,11 +253,11 @@ void telemetrie(const Kontext& k, const Soll& s) {
 // Kompakte Statuszeile zum Mitlesen.
 void debugAusgabe(const Kontext& k, const Soll& s) {
   Serial.printf("t=%5.2fh  Heiz[%d%d%d] Kuehl[%d%d%d] "
-                "AC=%d DachOG2=%d Disco=%d  Licht[%d%d%d|%d%d%d]\n",
+                "AC=%d Pool=%d DachOG2=%d Disco=%d  Licht[%d%d%d|%d%d%d]\n",
     k.stunde,
     s.heizung[0].wert,  s.heizung[1].wert,  s.heizung[2].wert,
     s.kuehlLed[0].wert, s.kuehlLed[1].wert, s.kuehlLed[2].wert,
-    s.klimaanlage.wert, s.dachfensterOG2.wert > 0, s.disco.wert,
+    s.klimaanlage.wert, s.whirlpool.wert, s.dachfensterOG2.wert > 0, s.disco.wert,
     s.licht[0].wert, s.licht[1].wert, s.licht[2].wert,
     s.licht[3].wert, s.licht[4].wert, s.licht[5].wert);
 

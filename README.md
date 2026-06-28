@@ -31,6 +31,8 @@ Alle Pins/Adressen/Parameter stehen zentral in [`include/Config.h`](include/Conf
 | Solarpanel (= zugleich Helligkeit), 50/50-Teiler an ADC | 36 (Sensor VP) |
 | Gewächshaus-Wassersensor (Bodenfeuchte, analog ADC1) | 34 |
 | DiscoLight WS2813 (FastLED) | 0 |
+| Whirlpool (PWM, MOSFET) | 32 |
+| Klimaanlage/AC (PWM, MOSFET) | 33 |
 | UART2 → Raspberry Pi (RX/TX) | 16 / 17 |
 
 **MCP-Eingänge (#1):** Klima-Taster EG/OG1/OG2 = 0/1/2 · Aufzug-Ruftaster = 3/4/5 ·
@@ -99,10 +101,24 @@ Tastenbedienung* (ein Knopf rotiert die Modi) und wird **nicht** in der Telemetr
 **Dashboard:** steuert `heat` und `ac` (Kühlung) **je Etage direkt** — rote bzw.
 blaue LED pro Etage (genau wie der Taster, nur ohne Modus-Rotation).
 
-**Zentrale Klimaanlage:** läuft, sobald **irgendeine** Etage kühlt
-(`klimaanlage = ODER(kühlen)`). Das schaltet der **ESP32 selbst** (in `interlocks()`);
-das Dashboard greift **nicht** direkt auf die AC zu. **OG2-Dachfenster** öffnen
-**nur**, wenn die **OG2** kühlt (AC durch eine andere Etage ⇒ Dachfenster bleiben zu).
+**Zentrale Klimaanlage (PWM, Pin 33):** kein direkter Dashboard-Zugriff. `interlocks()`
+setzt den **Duty-Cycle nach Anzahl kühlender Etagen** (1/2/3 → `AC_DUTY_1ETAGE` /
+`_2ETAGEN` / `_3ETAGEN` in `Config.h`; 0 Etagen ⇒ aus). `anwenden()` gibt den Duty per
+`analogWrite` aus.
+
+**Whirlpool (PWM, Pin 32):** Soll-Feld `whirlpool`, vom Dashboard nur **an/aus**
+geschaltet. Im An-Zustand liegt ein **fester** Duty (`WHIRLPOOL_DUTY`) an.
+
+### Tageszeit-Automatik (`tageszeitRegeln`, Basis-Prio)
+| Phase | Heizung | Kühlung/AC | Jalousien | Dachfenster |
+|-------|---------|-----------|-----------|-------------|
+| Morgen | **an** (alle) | aus | **auf** | zu |
+| Mittag/Tag | aus | aus | – | **auf** |
+| Abend | aus | **an** (alle) | **zu** | zu |
+| Nacht | aus | aus | – | **auf** |
+
+Das **Dachfenster** folgt **nur** diesem Zeitplan (keine automatische Kopplung mehr an
+das Kühlen). Hand-Taster (Prio 100) und Dashboard (Prio 80) können alles übersteuern.
 
 ---
 
@@ -148,9 +164,11 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 | Gewächshaus-Wassersensor (Bodenfeuchte) | ✅ eingebunden |
 | Dashboard Telemetrie + Befehle + Freeze | ✅ funktioniert |
 | Sensor-Regeln (`sensorRegeln`) | 🟡 leer – Logik folgt |
-| Klimaanlage (= ODER Kühlen) / OG2-Dachfenster bei OG2-Kühlen | ✅ funktioniert |
+| Zentrale AC (PWM, Duty nach Anzahl kühlender Etagen) | ✅ funktioniert |
+| Whirlpool (PWM, Dashboard an/aus, fester Duty) | ✅ funktioniert |
+| Tageszeit-Automatik (Heizung/AC/Jalousien/Dachfenster) | ✅ funktioniert |
 | Dashboard: `heat` + `ac` (Kühlung) pro Etage direkt | ✅ funktioniert |
-| Garage-Ultraschall, Whirlpool, TV-Display | 🔲 geplant |
+| Garage-Ultraschall, TV-Display | 🔲 geplant |
 
 ---
 
@@ -158,8 +176,8 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 
 **Klima & Lüftung**
 - [x] Dashboard steuert `heat` **und** `ac` (Kühlung) **pro Etage direkt** (rote/blaue LED) – kein Klima-Modus übers Dashboard.
-- [x] `klimaanlage = ODER(kühlen[Etage])`; **OG2-Dachfenster nur bei `kühlen[OG2]`** (ESP leitet die zentrale AC selbst ab).
-- [x] Interlock entsprechend umgesetzt (`interlocks()`).
+- [x] Zentrale AC als **PWM-Duty nach Anzahl kühlender Etagen** (`interlocks()`, Pin 33); kein direkter Dashboard-Zugriff.
+- [x] Dachfenster folgt **nur** dem Zeitplan (Kühl-Kopplung entfernt).
 
 **Aufräumen (bestätigte Relikte)**
 - [x] `klappe[]` aus dem Soll entfernt (keine Klappen verbaut – nur zentrale AC).
@@ -169,7 +187,7 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 
 **Neue Features**
 - [ ] **Garage:** Ultraschallsensor → Tor (Servo) auf + Licht (gleichgeschaltet mit **Türlicht**, Kanal K1). Pins/Schwelle in Config.
-- [ ] **Whirlpool:** DC-Motor über PWM + MOSFET (eigener Kanal/Pin + Soll-Feld).
+- [x] **Whirlpool:** DC-Motor über PWM + MOSFET (Pin 32, Soll-Feld `whirlpool`, Dashboard an/aus, fester Duty).
 - [ ] **Fernseher:** I2C-Display (am gemeinsamen I2C-Bus).
 - [ ] **Jalousien-Layout:** EG = **1**, OG1 = **2**, OG2 = **2** (gesamt 5 Servos) – Soll/Telemetrie anpassen (EG nur `blind1`).
 

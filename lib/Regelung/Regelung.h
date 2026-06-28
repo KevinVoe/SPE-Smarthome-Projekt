@@ -52,11 +52,12 @@ struct Feld {
 struct Soll {
   Feld heizung[ANZ_ETAGEN];               // 0/1  rote LED
   Feld kuehlLed[ANZ_ETAGEN];              // 0/1  blaue LED
-  Feld klimaanlage;                       // 0/1  zentrale Anlage (Dach) = ODER(kuehlen)
+  Feld klimaanlage;                       // PWM-Duty 0..255 (zentrale AC); Stufe = Anzahl kuehlender Etagen
   Feld dachfensterOG2;                    // 0=zu,100=auf
   Feld jalousie[ANZ_ETAGEN][ANZ_SEITEN];  // 0=offen,100=ganz beschattet
   Feld licht[ANZ_LICHT];                  // Stufe 0..3
   Feld disco;                             // 0/1 (nur OG2)
+  Feld whirlpool;                         // 0/1 (an/aus; fester Duty in Config)
 };
 
 // Eingangsgroessen fuer die Regeln (baut main jede Loop aus Tastern/Sensoren).
@@ -89,6 +90,7 @@ struct DashboardState {
   DashBefehl ext_light, door_light;
   DashBefehl party, skylight2;
   DashBefehl ac[ANZ_ETAGEN];   // Kuehlung PRO ETAGE (blaue LED); zentrale Anlage leitet der ESP32 ab
+  DashBefehl whirlpool;   // Pool an/aus (Soll-Feld vorhanden)
   DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
   DashBefehl autostop;   // Automatik-Stopp (Freeze) vom Dashboard - eigene TTL (FREEZE_TTL_MS)
 };

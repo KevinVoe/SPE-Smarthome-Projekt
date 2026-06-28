@@ -55,11 +55,16 @@ bool automatikEingefroren(const DashboardState& dash) {
 //  Schicht: TAGESZEIT  (Basis Prio 10 + Sperren Prio 60)
 // =============================================================================
 void tageszeitRegeln(const Kontext& k, Soll& s) {
-  bool abendNacht = (k.phase == Phase::ABEND || k.phase == Phase::NACHT);
-  bool morgen     = (k.phase == Phase::MORGEN);
-  bool tag        = (k.phase == Phase::TAG);
-  bool abend      = (k.phase == Phase::ABEND);
-  bool nacht      = (k.phase == Phase::NACHT);
+  bool morgen = (k.phase == Phase::MORGEN);
+  bool tag    = (k.phase == Phase::TAG);
+  bool abend  = (k.phase == Phase::ABEND);
+  bool nacht  = (k.phase == Phase::NACHT);
+
+  // Kleine Helfer fuer "alle Etagen ..." auf der Basis-Prio.
+  auto alleHeizung = [&](int16_t w){ for (uint8_t e=0;e<ANZ_ETAGEN;e++) setze(s.heizung[e],  w, PRIO_ZEIT_BASIS); };
+  auto alleKuehlen = [&](int16_t w){ for (uint8_t e=0;e<ANZ_ETAGEN;e++) setze(s.kuehlLed[e], w, PRIO_ZEIT_BASIS); };
+  auto alleJalousie= [&](int16_t w){ for (uint8_t e=0;e<ANZ_ETAGEN;e++)
+                                       for (uint8_t st=0;st<ANZ_SEITEN;st++) setze(s.jalousie[e][st], w, PRIO_ZEIT_BASIS); };
 
  if (morgen) {
     setze(s.licht[0], 0, PRIO_ZEIT_BASIS);
@@ -68,9 +73,10 @@ void tageszeitRegeln(const Kontext& k, Soll& s) {
     setze(s.licht[3], 1, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 1, PRIO_ZEIT_BASIS);
     setze(s.disco, 0, PRIO_ZEIT_BASIS);
-    setze(s.heizung[0], 1, PRIO_ZEIT_BASIS);
-    setze(s.heizung[1], 1, PRIO_ZEIT_BASIS);
-    setze(s.heizung[2], 1, PRIO_ZEIT_BASIS);
+    alleHeizung(1);                       // morgens: Heizung in allen Etagen AN
+    alleKuehlen(0);                       // (Kuehlen aus)
+    alleJalousie(0);                      // morgens: alle Jalousien AUF (0 = offen)
+    setze(s.dachfensterOG2, 0, PRIO_ZEIT_BASIS);   // Dachfenster zu
 }
 else if (tag) {
     setze(s.licht[0], 0, PRIO_ZEIT_BASIS);
@@ -79,6 +85,9 @@ else if (tag) {
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
     setze(s.disco, 0, PRIO_ZEIT_BASIS);
+    alleHeizung(0);                       // mittags: Heizung AUS
+    alleKuehlen(0);
+    setze(s.dachfensterOG2, 100, PRIO_ZEIT_BASIS); // mittags: Dachfenster AUF
 }
 else if (abend) {
     setze(s.licht[0], 2, PRIO_ZEIT_BASIS);
@@ -87,6 +96,10 @@ else if (abend) {
     setze(s.licht[3], 3, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
     setze(s.disco, 1, PRIO_ZEIT_BASIS);
+    alleHeizung(0);
+    alleKuehlen(1);                       // abends: Klimaanlage (Kuehlen) in allen Etagen AN
+    alleJalousie(100);                    // abends: alle Jalousien ZU (100 = beschattet)
+    setze(s.dachfensterOG2, 0, PRIO_ZEIT_BASIS);   // Dachfenster zu
 }
 else if (nacht) {
     setze(s.licht[0], 1, PRIO_ZEIT_BASIS);
@@ -95,6 +108,8 @@ else if (nacht) {
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
     setze(s.disco, 1, PRIO_ZEIT_BASIS);
+    alleKuehlen(0);                       // nachts: Kuehlen AUS
+    setze(s.dachfensterOG2, 100, PRIO_ZEIT_BASIS); // nachts: Dachfenster AUF
 }
 }
 
@@ -122,6 +137,7 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
   if (dashAktiv(dash.ext_light))  setze(s.licht[0], dash.ext_light.wert,  PRIO_DASHBOARD);
   if (dashAktiv(dash.door_light)) setze(s.licht[1], dash.door_light.wert, PRIO_DASHBOARD);
   if (dashAktiv(dash.party))     setze(s.disco,          dash.party.wert,               PRIO_DASHBOARD);
+  if (dashAktiv(dash.whirlpool)) setze(s.whirlpool,      dash.whirlpool.wert ? 1 : 0,   PRIO_DASHBOARD);
   if (dashAktiv(dash.skylight2)) setze(s.dachfensterOG2, dash.skylight2.wert ? 100 : 0, PRIO_DASHBOARD);
   // Zentrale Klimaanlage (s.klimaanlage) wird NICHT direkt vom Dashboard gesetzt:
   // interlocks() schaltet sie = ODER(kuehlen[Etage]). Das Dashboard steuert die
@@ -188,19 +204,26 @@ void interlocks(Soll& s) {
 
   }
 
-  // Zentrale Klimaanlage = ODER ueber alle KUEHLENDEN Etagen (keine Klappen verbaut).
-  bool acAn = false; uint8_t acPrio = 0;
+  // Zentrale Klimaanlage: PWM-Duty steigt mit der ANZAHL kuehlender Etagen.
+  // (Dashboard steuert nur die Kuehlung pro Etage; die zentrale AC leitet der
+  //  ESP32 hier ab - kein direkter Dashboard-Zugriff.)
+  uint8_t kuehlAnzahl = 0; uint8_t acPrio = 0;
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
     if (s.kuehlLed[e].wert != 0) {
-      acAn = true;
+      kuehlAnzahl++;
       if (s.kuehlLed[e].prio > acPrio) acPrio = s.kuehlLed[e].prio;
     }
-  setze(s.klimaanlage, acAn ? 1 : 0, acPrio);
+  int16_t acDuty = 0;
+  switch (kuehlAnzahl) {
+    case 1:  acDuty = AC_DUTY_1ETAGE;  break;
+    case 2:  acDuty = AC_DUTY_2ETAGEN; break;
+    case 3:  acDuty = AC_DUTY_3ETAGEN; break;
+    default: acDuty = 0;               break;   // keine Etage kuehlt -> AC aus
+  }
+  setze(s.klimaanlage, acDuty, acPrio);
 
-  // OG2-Dachfenster oeffnen NUR, wenn die OG2 kuehlt (AC durch eine andere
-  // Etage -> Dachfenster bleiben zu).
-  if (s.kuehlLed[OG2].wert != 0)
-    setze(s.dachfensterOG2, 100, s.kuehlLed[OG2].prio);
+  // (Dachfenster folgt NUR dem Zeitplan - keine automatische Kopplung mehr an
+  //  das Kuehlen, siehe tageszeitRegeln.)
 
   // Disco (OG2) und OG2-Raumlicht schliessen sich aus (selber Raum). Der hoeher
   // Priorisierte gewinnt; bei Gleichstand gewinnt die Disco.
