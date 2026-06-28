@@ -35,7 +35,7 @@ constexpr float    SONNE_HELL_LUX  = 800.0f;   // ab hier beschatten
 // ─── Etagen / Indizes ────────────────────────────────────────────────────────
 constexpr uint8_t ANZ_ETAGEN = 3;   // 0=EG, 1=OG1, 2=OG2
 constexpr uint8_t ANZ_SEITEN = 2;   // 0=links, 1=rechts
-constexpr uint8_t ANZ_LICHT  = 6;   // K0=Terasse,K1=Eingang,K2=EG,K3=OG1,K4=OG2,K5=frei
+constexpr uint8_t ANZ_LICHT  = 6;   // K0=Terasse,K1=Eingang,K2=EG,K3=OG1,K4=OG2,K5=Gewaechshaus
 constexpr uint8_t OG2        = 2;   // Index der 2. Etage (Disco/Dachfenster)
 
 // ─── Datentypen ──────────────────────────────────────────────────────────────

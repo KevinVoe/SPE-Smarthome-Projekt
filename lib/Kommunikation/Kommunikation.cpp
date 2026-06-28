@@ -160,7 +160,7 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "light"))  { if (et >= 0) dashSetze(dash.light[et], val); }
   else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
   else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
-  else if (!strcmp(cmd, "garden_light")) dashSetze(dash.light[5], val);
+  else if (!strcmp(cmd, "garden_light")) dashSetze(dash.garden_light, val);
   else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
   else if (!strcmp(cmd, "whirlpool"))  dashSetze(dash.whirlpool,  val);
   else if (!strcmp(cmd, "ac"))     { if (et >= 0) dashSetze(dash.ac[et], val); }

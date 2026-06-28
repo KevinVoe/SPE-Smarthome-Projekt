@@ -138,10 +138,13 @@ void dashboardRegeln(Soll& s, DashboardState& dash) {
     if (dashAktiv(dash.ac[e]))    setze(s.kuehlLed[e], dash.ac[e].wert,    PRIO_DASHBOARD);
     if (dashAktiv(dash.light[e])) setze(s.licht[e+2],  dash.light[e].wert, PRIO_DASHBOARD);
   }
-  if (dashAktiv(dash.ext_light))  setze(s.licht[0], dash.ext_light.wert,  PRIO_DASHBOARD);
-  if (dashAktiv(dash.door_light)) setze(s.licht[1], dash.door_light.wert, PRIO_DASHBOARD);
+  if (dashAktiv(dash.ext_light))    setze(s.licht[0], dash.ext_light.wert,    PRIO_DASHBOARD);
+  if (dashAktiv(dash.door_light))   setze(s.licht[1], dash.door_light.wert,   PRIO_DASHBOARD);
+  if (dashAktiv(dash.garden_light)) setze(s.licht[5], dash.garden_light.wert, PRIO_DASHBOARD);
   if (dashAktiv(dash.party))     setze(s.disco,          dash.party.wert,               PRIO_DASHBOARD);
   if (dashAktiv(dash.whirlpool)) setze(s.whirlpool,      dash.whirlpool.wert ? 1 : 0,   PRIO_DASHBOARD);
+  // skylight1 + skylight2 steuern BEIDE das eine OG2-Dachfenster.
+  if (dashAktiv(dash.skylight1)) setze(s.dachfensterOG2, dash.skylight1.wert ? 100 : 0, PRIO_DASHBOARD);
   if (dashAktiv(dash.skylight2)) setze(s.dachfensterOG2, dash.skylight2.wert ? 100 : 0, PRIO_DASHBOARD);
   // Zentrale Klimaanlage (s.klimaanlage) wird NICHT direkt vom Dashboard gesetzt:
   // interlocks() schaltet sie = ODER(kuehlen[Etage]). Das Dashboard steuert die
