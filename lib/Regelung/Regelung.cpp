@@ -72,6 +72,7 @@ void tageszeitRegeln(const Kontext& k, Soll& s) {
     setze(s.licht[2], 1, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 1, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 1, PRIO_ZEIT_BASIS);
+    setze(s.licht[5], 2, PRIO_ZEIT_BASIS);
     setze(s.disco, 0, PRIO_ZEIT_BASIS);
     alleHeizung(1);                       // morgens: Heizung in allen Etagen AN
     alleKuehlen(0);                       // (Kuehlen aus)
@@ -84,6 +85,7 @@ else if (tag) {
     setze(s.licht[2], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[5], 1, PRIO_ZEIT_BASIS);
     setze(s.disco, 0, PRIO_ZEIT_BASIS);
     alleHeizung(0);                       // mittags: Heizung AUS
     alleKuehlen(0);
@@ -95,6 +97,7 @@ else if (abend) {
     setze(s.licht[2], 3, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 3, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[5], 2, PRIO_ZEIT_BASIS);
     setze(s.disco, 1, PRIO_ZEIT_BASIS);
     alleHeizung(0);
     alleKuehlen(1);                       // abends: Klimaanlage (Kuehlen) in allen Etagen AN
@@ -107,6 +110,7 @@ else if (nacht) {
     setze(s.licht[2], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[3], 0, PRIO_ZEIT_BASIS);
     setze(s.licht[4], 0, PRIO_ZEIT_BASIS);
+    setze(s.licht[5], 3, PRIO_ZEIT_BASIS);
     setze(s.disco, 1, PRIO_ZEIT_BASIS);
     alleKuehlen(0);                       // nachts: Kuehlen AUS
     setze(s.dachfensterOG2, 100, PRIO_ZEIT_BASIS); // nachts: Dachfenster AUF

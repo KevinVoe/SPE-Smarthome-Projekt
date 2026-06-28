@@ -35,8 +35,8 @@ enum class Position : uint8_t { ZU = 0, AUF = 1 };
 // =============================================================================
 //  DIGITALE AUSGAENGE  (Transistoren am MCP-OUT, active-high)  Index = Etage
 // =============================================================================
-constexpr uint8_t MCPOUT_HEIZEN[3]  = { 3, 4, 5 };   // rote LED je Etage
-constexpr uint8_t MCPOUT_KUEHLEN[3] = { 2, 1, 0 };   // blaue LED je Etage
+constexpr uint8_t MCPOUT_HEIZEN[3]  = { 2, 1, 0 };   // rote LED je Etage
+constexpr uint8_t MCPOUT_KUEHLEN[3] = { 5, 4, 3 };   // blaue LED je Etage
 
 // =============================================================================
 //  DIGITALE EINGAENGE  (am MCP-IN, INPUT_PULLUP; aktiv/geschlossen = LOW)
@@ -89,7 +89,7 @@ constexpr int LICHT_PIN_K1 = 4; // Tür_licht
 constexpr int LICHT_PIN_K2 = 5; // EG_Licht
 constexpr int LICHT_PIN_K3 = 18; // OG1_Licht
 constexpr int LICHT_PIN_K4 = 19; // OG2_Licht
-constexpr int LICHT_PIN_K5 = 23; //Reserve
+constexpr int LICHT_PIN_K5 = 23; //Gewächshaus_Licht
 
 //  PWM-Ticks (0..4095) fuer die Endlagen - pro Servo einmal einmessen!
 constexpr uint16_t SERVO_TICK_ZU  = 150;   // ~ 0°

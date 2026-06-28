@@ -71,14 +71,14 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   doc["temp"]     = k.temperatur;   // EIN Sensor fuers ganze Haus
   doc["humidity"] = k.feuchte;
   doc["auto_active"] = !k.automatikAus;   // true = Automatik laeuft, false = eingefroren (Handbetrieb)
-  doc["greenhouse"]["soil_moisture"] = k.bodenfeuchte;   // Gewaechshaus-Bodenfeuchte (% 0..100)
 
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
   outdoor["ext_light"] = s.licht[0].wert;
   outdoor["door_light"] = s.licht[1].wert;
   outdoor["whirlpool"] = s.whirlpool.wert;   // 0/1 (an/aus)
   outdoor["garage"] = 0;
-  outdoor["front_door"] = 0;
+  outdoor["garden_light"] = s.licht[5].wert;   // Stufe 0..3
+  outdoor["humid_garden"] = k.bodenfeuchte;   // Gewaechshaus-Bodenfeuchte (% 0..100)
 
   JsonObject roof = doc["roof"].to<JsonObject>();
   roof["pv_voltage"] = k.pvSpannung;                          // Solar-Spannung (V)
@@ -91,7 +91,6 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   // ── EG (Soll-Index 0) ────────────────────────────────────────────────────
   JsonObject eg = floors["EG"].to<JsonObject>();
   eg["blind1"] = jalousieZuBlind(s.jalousie[0][0].wert);
-  eg["blind2"] = jalousieZuBlind(s.jalousie[0][1].wert);
   eg["heat"]  = s.heizung[0].wert;    // 0/1  rote LED (Heizung)
   eg["cool"]  = s.kuehlLed[0].wert;   // 0/1  blaue LED (Kuehlung)
   eg["light"]  = s.licht[2].wert;     // Stufe 0..3
@@ -161,6 +160,7 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "light"))  { if (et >= 0) dashSetze(dash.light[et], val); }
   else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
   else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
+  else if (!strcmp(cmd, "garden_light")) dashSetze(dash.light[5], val);
   else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
   else if (!strcmp(cmd, "whirlpool"))  dashSetze(dash.whirlpool,  val);
   else if (!strcmp(cmd, "ac"))     { if (et >= 0) dashSetze(dash.ac[et], val); }

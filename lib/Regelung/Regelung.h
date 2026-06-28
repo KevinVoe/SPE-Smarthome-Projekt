@@ -87,7 +87,7 @@ struct DashboardState {
   DashBefehl blind[ANZ_ETAGEN][ANZ_SEITEN];
   DashBefehl heat[ANZ_ETAGEN];
   DashBefehl light[ANZ_ETAGEN];
-  DashBefehl ext_light, door_light;
+  DashBefehl ext_light, door_light, garden_light;
   DashBefehl party, skylight2;
   DashBefehl ac[ANZ_ETAGEN];   // Kuehlung PRO ETAGE (blaue LED); zentrale Anlage leitet der ESP32 ab
   DashBefehl whirlpool;   // Pool an/aus (Soll-Feld vorhanden)
