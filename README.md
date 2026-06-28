@@ -19,7 +19,7 @@ Alle Pins/Adressen/Parameter stehen zentral in [`include/Config.h`](include/Conf
 | Baustein | Adresse | Rolle |
 |----------|---------|-------|
 | MCP23017 #1 | `0x20` | **Eingänge** (alle `INPUT_PULLUP`): Taster, Reeds |
-| MCP23017 #2 | `0x24` (Test mit 1 MCP; final `0x21`) | **Ausgänge** (Transistoren, active-high): Heiz-/Kühl-LEDs |
+| MCP23017 #2 | `0x24` | **Ausgänge** (Transistoren, active-high): Heiz-/Kühl-LEDs |
 | PCA9685 | `0x40` | **Servos** (Jalousien, Dachfenster, Garage) |
 
 **ESP32-native Pins:**
@@ -90,23 +90,29 @@ beim letzten Stand ein (Snapshot), Taster + Dashboard bleiben aktiv. TTL 5 min
 
 ## 4. Klima-Logik (pro Etage)
 
-3 Modi pro Etage: **Automatik / Heizen / Kühlen**. Quelle ist der Etagentaster
-(`TasterState`, mit TTL) — und künftig das Dashboard (setzt denselben Modus, *nicht*
-direkt die Heizung). `handRegeln` macht aus dem Modus die Ausgänge:
-Heizen → rote LED, Kühlen → blaue LED.
+**Etagentaster (Hand):** rotiert lokal 3 Modi pro Etage — **Automatik / Heizen /
+Kühlen** (`TasterState`, mit TTL). `handRegeln` macht daraus die Ausgänge:
+Heizen → rote LED, Kühlen → blaue LED. Der Modus ist nur ein *Helfer für die
+Tastenbedienung* (ein Knopf rotiert die Modi) und wird **nicht** in der Telemetrie
+übertragen.
+
+**Dashboard:** steuert `heat` und `ac` (Kühlung) **je Etage direkt** — rote bzw.
+blaue LED pro Etage (genau wie der Taster, nur ohne Modus-Rotation).
 
 **Zentrale Klimaanlage:** läuft, sobald **irgendeine** Etage kühlt
-(`klimaanlage = ODER(kühlen)`). Das Dashboard greift **nicht** direkt auf die AC zu.
-**OG2-Dachfenster** öffnen **nur**, wenn die **OG2** kühlt (AC durch eine andere
-Etage ⇒ Dachfenster bleiben zu).
+(`klimaanlage = ODER(kühlen)`). Das schaltet der **ESP32 selbst** (in `interlocks()`);
+das Dashboard greift **nicht** direkt auf die AC zu. **OG2-Dachfenster** öffnen
+**nur**, wenn die **OG2** kühlt (AC durch eine andere Etage ⇒ Dachfenster bleiben zu).
 
 ---
 
 ## 5. Dashboard / Telemetrie (UART2, JSON pro Zeile)
 
 - **ESP → Pi:** Telemetrie-Frame (`type:"telemetry"`) mit `time` (10-Min-quantisiert),
-  `temp`, `humidity`, `auto_active`, `outdoor`, `roof` (inkl. `pv_voltage`), `floors`.
-  Gesendet nur bei Änderung + 5-s-Heartbeat.
+  `temp`, `humidity`, `auto_active`, `greenhouse.soil_moisture`, `outdoor`,
+  `roof` (inkl. `pv_voltage` + zentrale `ac`), `floors` (je Etage `heat`/`cool`/`light`/
+  `blind1`/`blind2`) und `elevator.floor`. **Kein `mode`** mehr (Heiz-/Kühlzustand
+  steht je Etage in `heat`/`cool`). Gesendet nur bei Änderung + 5-s-Heartbeat.
 - **Pi → ESP:** Befehle `{"cmd":"...","value":..,"floor":".."}` → `behandleBefehl()`
   in `Kommunikation.cpp` (Overrides mit TTL in `DashboardState`).
 - Schema-Referenz: `src/dashboardConnections.cpp` (frühe Skizze, dient als
@@ -143,7 +149,7 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 | Dashboard Telemetrie + Befehle + Freeze | ✅ funktioniert |
 | Sensor-Regeln (`sensorRegeln`) | 🟡 leer – Logik folgt |
 | Klimaanlage (= ODER Kühlen) / OG2-Dachfenster bei OG2-Kühlen | ✅ funktioniert |
-| Dashboard setzt Klima-Modus (statt direkt Heizung) | 🟡 offen |
+| Dashboard: `heat` + `ac` (Kühlung) pro Etage direkt | ✅ funktioniert |
 | Garage-Ultraschall, Whirlpool, TV-Display | 🔲 geplant |
 
 ---
@@ -151,9 +157,8 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 ## 8. Offene Punkte / nächste Schritte (Finalisierung)
 
 **Klima & Lüftung**
-- [ ] Dashboard `heat`/Kühlung → setzt **Klima-Modus** pro Etage (wie Taster), nicht direkt `s.heizung`.
-- [ ] Kühlung pro Etage auch vom Dashboard setzbar (blaue LED am Bediengerät).
-- [x] `klimaanlage = ODER(kühlen[Etage])`; **OG2-Dachfenster nur bei `kühlen[OG2]`**.
+- [x] Dashboard steuert `heat` **und** `ac` (Kühlung) **pro Etage direkt** (rote/blaue LED) – kein Klima-Modus übers Dashboard.
+- [x] `klimaanlage = ODER(kühlen[Etage])`; **OG2-Dachfenster nur bei `kühlen[OG2]`** (ESP leitet die zentrale AC selbst ab).
 - [x] Interlock entsprechend umgesetzt (`interlocks()`).
 
 **Aufräumen (bestätigte Relikte)**
@@ -169,7 +174,7 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 - [ ] **Jalousien-Layout:** EG = **1**, OG1 = **2**, OG2 = **2** (gesamt 5 Servos) – Soll/Telemetrie anpassen (EG nur `blind1`).
 
 **Telemetrie vervollständigen**
-- [x] `floors[..].mode` aus dem realen Klima-Modus (0=Auto,1=Heizen,2=Kühlen) gefüllt.
+- [x] `floors[..].cool` ergänzt (blaue LED je Etage); `mode` **entfernt** (nicht mehr nötig).
 - [x] `elevator.floor` aus `aufzug.aktuelleEtage()` gefüllt.
 - [x] `greenhouse.soil_moisture` aus dem Wassersensor (0=trocken…100=nass).
 - [ ] `whirlpool` / `tv` / `garage` an reale Quellen koppeln (sobald Aktoren da).
@@ -183,7 +188,8 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 - [ ] `FEHLER` quittierbar (Dashboard/Taster) + Referenzfahrt nach EG beim Start/nach Fehler.
 
 **Hardware/Config**
-- [ ] Zweiten MCP anschließen, `ADDR_MCP_OUT` von `0x24` auf `0x21` (final).
+- `ADDR_MCP_OUT` bleibt auf **`0x24`** (keine Umstellung auf `0x21` geplant).
+- [ ] Wassersensor-Rohwerte einmessen (`SENSORIK_WASSER_TROCKEN`/`_NASS` in `Config.h`).
 - [ ] Servo-Endlagen je Servo einmessen; Aufzug-Schritttakt feinjustieren.
 
 ---

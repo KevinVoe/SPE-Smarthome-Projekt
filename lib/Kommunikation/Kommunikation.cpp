@@ -90,27 +90,27 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
  
   // ── EG (Soll-Index 0) ────────────────────────────────────────────────────
   JsonObject eg = floors["EG"].to<JsonObject>();
-  eg["mode"]   = (int)k.klimaModus[0];   // 0=Auto, 1=Heizen, 2=Kuehlen
   eg["blind1"] = jalousieZuBlind(s.jalousie[0][0].wert);
   eg["blind2"] = jalousieZuBlind(s.jalousie[0][1].wert);
-  eg["heat"]  = s.heizung[0].wert;   // Soll kennt nur 1 Heizwert/Etage ->
+  eg["heat"]  = s.heizung[0].wert;    // 0/1  rote LED (Heizung)
+  eg["cool"]  = s.kuehlLed[0].wert;   // 0/1  blaue LED (Kuehlung)
   eg["light"]  = s.licht[2].wert;     // Stufe 0..3
  
   // ── E1 (Soll-Index 1) ────────────────────────────────────────────────────
   JsonObject e1 = floors["E1"].to<JsonObject>();
-  e1["mode"]   = (int)k.klimaModus[1];
   e1["blind1"] = jalousieZuBlind(s.jalousie[1][0].wert);
   e1["blind2"] = jalousieZuBlind(s.jalousie[1][1].wert);
   e1["heat"]  = s.heizung[1].wert;
+  e1["cool"]  = s.kuehlLed[1].wert;
   e1["light"]  = s.licht[3].wert;
   e1["tv"]     = 0;   // TODO: keine Quelle (Fernseher)
  
   // ── E2 / OG2 (Soll-Index 2) ──────────────────────────────────────────────
   JsonObject e2 = floors["E2"].to<JsonObject>();
-  e2["mode"]   = (int)k.klimaModus[2];
   e2["blind1"] = jalousieZuBlind(s.jalousie[2][0].wert);
   e2["blind2"] = jalousieZuBlind(s.jalousie[2][1].wert);
   e2["heat"]  = s.heizung[2].wert;
+  e2["cool"]  = s.kuehlLed[2].wert;
   e2["light"]  = s.licht[4].wert;
   e2["party"]  = s.disco.wert;
  
@@ -162,7 +162,7 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
   else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
   else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
-  else if (!strcmp(cmd, "ac"))         dashSetze(dash.ac,         val);
+  else if (!strcmp(cmd, "ac"))     { if (et >= 0) dashSetze(dash.ac[et], val); }
   else if (!strcmp(cmd, "skylight2"))  dashSetze(dash.skylight2,  val);
   else if (!strcmp(cmd, "skylight1"))  dashSetze(dash.skylight1,  val);
   else if (!strcmp(cmd, "tv"))         dashSetze(dash.tv,         val);

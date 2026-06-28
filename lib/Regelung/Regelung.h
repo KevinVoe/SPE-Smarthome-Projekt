@@ -87,7 +87,8 @@ struct DashboardState {
   DashBefehl heat[ANZ_ETAGEN];
   DashBefehl light[ANZ_ETAGEN];
   DashBefehl ext_light, door_light;
-  DashBefehl party, ac, skylight2;
+  DashBefehl party, skylight2;
+  DashBefehl ac[ANZ_ETAGEN];   // Kuehlung PRO ETAGE (blaue LED); zentrale Anlage leitet der ESP32 ab
   DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
   DashBefehl autostop;   // Automatik-Stopp (Freeze) vom Dashboard - eigene TTL (FREEZE_TTL_MS)
 };

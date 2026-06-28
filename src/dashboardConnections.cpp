@@ -4,18 +4,23 @@
  * Sendet 1x/s einen Telemetrie-Frame als EINE JSON-Zeile ueber UART (115200 Baud).
  * Das Python-Backend liest diesen Datenstrom live ein (keine Datei noetig).
  *
- * Werte / Konventionen:
- *   Bedienfeld mode: 0 Auto | 1 Heizung an,Klima aus | 2 Klima an,Heizung aus
- *                    | 3 Alles aus | 4 Dachfenster auf (nur EG/E2)
+ * Werte / Konventionen (Stand: aktuelle Firmware, Quelle: lib/Kommunikation):
  *   Jalousie blind1/2 : 1 oben  / 0 unten
- *   Heizung  heat1/2  : 1 an    / 0 aus
+ *   Heizung  heat     : 1 an / 0 aus  (PRO ETAGE, rote LED)
+ *   Kuehlung cool     : 1 an / 0 aus  (PRO ETAGE, blaue LED)
  *   Beleuchtung light : 0 aus / 1 / 2 / 3 (Dimmstufe)
- *   Dachfenster sky1/2: 1 offen / 0 zu
- *   Klima ac          : 1 an / 0 aus
+ *   Dachfenster sky1/2: 1 offen / 0 zu  (beide im OG2/E2)
+ *   Klima ac (roof)   : 1 an / 0 aus  (ZENTRALE Anlage; ESP leitet sie aus cool[] ab)
  *   Party (nur E1)    : 1 ja / 0 nein
  *   Fernseher tv      : 1 an / 0 aus
  *   Aufzug floor      : 0 EG / 1 E1 / 2 E2
  *   PV pv_voltage     : Solarspannung in Volt (float)
+ *   greenhouse.soil_moisture : 0 trocken .. 100 nass
+ *   auto_active       : true Automatik laeuft / false eingefroren ("hand")
+ *
+ *   Hinweis: Es gibt KEINEN "mode" mehr in der Telemetrie. Das Dashboard steuert
+ *   heat und ac (Kuehlung) je Etage direkt (cmd + value + floor "EG"/"E1"/"E2");
+ *   den Klima-Modus rotiert nur der lokale Etagen-Taster am Haus.
  *
  * Verkabelung Pi <-> ESP32 (3.3V! kein 5V an Pi-RX):
  *   ESP32 TX (GPIO17) -> Pi RX (GPIO15 / Pin 10)
@@ -40,9 +45,9 @@ int   readSky2()                    { return 0; }
 int   readAC()                      { return 0; }
 int   readElevator()                { return 1; }   // 0/1/2
 int   readParty()                   { return 0; }
-int   readMode(const char* floor)   { return 0; }   // 0..4
 int   readBlind(const char* f, int n) { return 1; } // 1 oben / 0 unten
-int   readHeat(const char* f, int n)  { return 0; } // 0/1
+int   readHeat(const char* f)         { return 0; } // 0/1 (rote LED)
+int   readCool(const char* f)         { return 0; } // 0/1 (blaue LED)
 int   readLight(const char* floor)  { return 0; }   // 0..3
 
 // ── UART zum Raspberry Pi ─────────────────────────────────────────────────────
@@ -65,12 +70,11 @@ void loop() {
 }
 
 // ── Hilfsfunktion: ein Etagen-Objekt fuellen ─────────────────────────────────
-void fillFloor(JsonObject f, int mode, int b1, int b2, int h1, int h2, int light) {
-  f["mode"]   = mode;
+void fillFloor(JsonObject f, int b1, int b2, int heat, int cool, int light) {
   f["blind1"] = b1;
   f["blind2"] = b2;
-  f["heat1"]  = h1;
-  f["heat2"]  = h2;
+  f["heat"]   = heat;
+  f["cool"]   = cool;
   f["light"]  = light;
 }
 
@@ -91,17 +95,17 @@ void sendTelemetry() {
   JsonObject floors = doc["floors"].to<JsonObject>();
 
   fillFloor(floors["EG"].to<JsonObject>(),
-            readMode("EG"), readBlind("EG", 1), readBlind("EG", 2),
-            readHeat("EG", 1), readHeat("EG", 2), readLight("EG"));
+            readBlind("EG", 1), readBlind("EG", 2),
+            readHeat("EG"), readCool("EG"), readLight("EG"));
 
   JsonObject e1 = floors["E1"].to<JsonObject>();
-  fillFloor(e1, readMode("E1"), readBlind("E1", 1), readBlind("E1", 2),
-            readHeat("E1", 1), readHeat("E1", 2), readLight("E1"));
-  e1["party"] = readParty();                // nur E1, 0/1
+  fillFloor(e1, readBlind("E1", 1), readBlind("E1", 2),
+            readHeat("E1"), readCool("E1"), readLight("E1"));
+  e1["party"] = readParty();                // 0/1
 
   fillFloor(floors["E2"].to<JsonObject>(),
-            readMode("E2"), readBlind("E2", 1), readBlind("E2", 2),
-            readHeat("E2", 1), readHeat("E2", 2), readLight("E2"));
+            readBlind("E2", 1), readBlind("E2", 2),
+            readHeat("E2"), readCool("E2"), readLight("E2"));
 
   doc["elevator"]["floor"] = readElevator(); // 0/1/2
 
