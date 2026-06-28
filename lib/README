@@ -1,27 +1,28 @@
 Module dieses Projekts
 ======================
 
-Jedes Steuerungselement ist ein eigenes Modul und liegt in einem EIGENEN
-Unterordner (PlatformIO-Konvention - flache .cpp-Dateien direkt in lib/ werden
-NICHT kompiliert!):
+Jedes Element ist ein eigenes Modul in einem EIGENEN Unterordner (PlatformIO:
+flache .cpp direkt in lib/ werden NICHT kompiliert). Module sind "dumme Treiber" -
+die Logik steht in Regelung + main.
 
     lib/
-      Io/            Abstraktion fuer ESP32- und MCP23017-Pins (Basis fuer alles)
-      Heizung/       Etagenheizung: Taster + Hysterese (LED-simuliert)
-      Aufzug/        Brushed-DC ueber Seilwinde, Zustandsautomat
-      Licht/         NeoPixel-Raumlicht (Ausgabe)
-      DiscoLight/    NeoPixel-Stimmungslicht (Animation)
-      Servoaktor/    Servos am PCA9685 (Dachfenster, Jalousie, Garage)
-      Alarm/         Alarmrelais + Buzzer
-      Sensorik/      Temperatur/Helligkeit/Feuchte (aktuell simuliert)
-      Kommunikation/ JSON-Link zum Raspberry Pi
+      Regelung/        Soll-Zustand + Schicht-Funktionen + Interlocks + Kontext
+                       + TasterState (Klima-Modus) + Freeze (Automatik-Stopp)
+      DigitalInput/    besitzt MCP-IN (0x20); Entprellung + Flanken
+                       (gedrueckt / geradeGedrueckt); Taster + Reeds
+      DigitaleOutputs/ besitzt MCP-OUT; heizen(Etage,an) / kuehlen(Etage,an)
+      Servoaktor/      Servos am PCA9685: fahreJalousie/fahreDachfenster/fahreGarage
+      Aufzug/          Schrittmotor 28BYJ-48 ueber ULN2003 (IN1-4, Halbschritt)
+      Licht/           6 PWM-Kanaele ueber IRLZ44N-MOSFETs (setKanal)
+      DiscoLight/      WS2813 / FastLED, nicht-blockierende Animation
+      Sensorik/        1x DHT (Temp/Feuchte) + Solarpanel (= Helligkeit)
+      Kommunikation/   JSON-Telemetrie + Befehlsempfang (UART2 zum Pi)
 
-Ein neues Modul anlegen (siehe auch ../README.md):
-  1) Ordner lib/MeinModul/ erstellen
-  2) MeinModul.h + MeinModul.cpp anlegen (Konstruktor nimmt Pins/Parameter,
-     dann begin() und update())
-  3) Pins/Parameter in include/Config.h eintragen
-  4) In src/main.cpp Objekt anlegen, in setup() begin(), in loop() update()
+Konvention:
+  - Pins/Adressen/Parameter NUR in include/Config.h.
+  - MCP-Eingaenge INPUT_PULLUP (aktiv = LOW), MCP-Ausgaenge active-high.
+  - Wire.begin() einmal in main/setup(), DANN die Modul-begin().
+  - Nicht-blockierend (millis), kein delay() in der loop().
 
-Hardwarezugriff IMMER ueber die Io-Schicht (io.digitalRead/Write/pinMode),
-damit egal ist, ob ein Pin am ESP32 oder am MCP23017 haengt.
+Neues Modul: Ordner lib/MeinModul/ -> MeinModul.h/.cpp -> Pins in Config ->
+in main Objekt anlegen, begin() in setup(), update()/Aufrufe in loop().

@@ -1,225 +1,189 @@
 # SPE Smarthome – ESP32-Steuerung
 
 Steuerung & Regelung eines Playmobil-Smarthomes (Ausbildungsprojekt SPE/Siemens).
-Ein **ESP32 WROOM-32U** steuert Heizung, Beleuchtung, Beschattung/Dachfenster,
-einen Aufzug und die Sicherheitstechnik. Bedient wird lokal über Taster **und**
-über ein Dashboard auf einem **Raspberry Pi** (serielle Verbindung, JSON).
+Ein **ESP32 WROOM-32U** steuert Klima (Heizen/Kühlen), Beleuchtung, Beschattung,
+Dachfenster, Disco, einen Schrittmotor-Aufzug und weitere Aktoren. Bedient wird
+**lokal über Taster** und über ein **Dashboard auf einem Raspberry Pi**
+(serielle Verbindung, JSON-Zeilen).
 
-> Dieser Teil des Projekts (Elektronik + Steuerungs-/Regelungssoftware) wird von
-> einem 2er-Team über GitHub gemeinsam entwickelt. Dashboard und Konstruktion
-> machen andere Gruppen.
-
----
-
-## 1. Architektur auf einen Blick
-
-```
-                 ┌─────────────────────────────────────────────┐
-   Raspberry Pi  │                  ESP32                       │
-   (Dashboard) ──┤ Serial2/UART  ── Kommunikation (JSON-Zeilen) │
-                 │                        │                     │
-                 │                     main.cpp                 │
-                 │           (loop + REGELUNGSLOGIK)            │
-                 │      ┌─────────────────┼───────────────┐     │
-                 │   Module ............................. Module │
-                 │   Heizung  Aufzug  Licht  Servoaktor  Alarm  │
-                 │      │        │       │        │         │    │
-                 │   ┌──┴────────┴───────┴────────┴─────────┴─┐  │
-                 │   │            Io-Schicht                   │  │
-                 │   │  einheitlich: ESP32-GPIO ODER MCP23017  │  │
-                 │   └──────────────┬─────────────┬───────────┘  │
-                 └──────────────────┼─────────────┼──────────────┘
-                                 ESP32-GPIOs   I2C-Bus
-                                              (MCP23017, PCA9685,
-                                               BH1750, SHT31)
-```
-
-**Leitprinzipien**
-
-- **Modular:** Jedes Steuerungselement ist ein eigenständiges Modul in
-  `lib/<Modul>/`. Module kennen sich gegenseitig nicht – nur `main` verknüpft sie.
-  → Zwei Leute können parallel an verschiedenen Modulen arbeiten, ohne sich in die
-  Quere zu kommen.
-- **Konfiguration zentral:** Alle Pins/Adressen/Parameter stehen ausschließlich in
-  [`include/Config.h`](include/Config.h).
-- **Hardware-Abstraktion (Io):** Ein Modul fragt nie direkt einen GPIO ab, sondern
-  immer `io.digitalRead/Write(...)`. Ob der Pin am ESP32 oder am Port-Expander
-  **MCP23017** sitzt, entscheidet allein die Config.
-- **Kooperativ & nicht-blockierend:** Ein `loop()`, jedes Modul hat ein
-  `update()` mit eigenem Timing über `millis()`. **Kein `delay()`** – sonst
-  blockiert ein Modul alle anderen.
+> Stand: laufende Entwicklung (Branch `RefactorWeek3`). Diese README beschreibt den
+> **tatsächlichen aktuellen Code-Stand**; offene Punkte stehen in Abschnitt 8.
 
 ---
 
-## 2. Ordnerstruktur
+## 1. Hardware / Pin-Belegung
 
-```
-SPE-Smarthome-Projekt/
-├─ include/
-│  └─ Config.h            ← ZENTRALE Konfiguration (Pins, Adressen, Parameter)
-├─ lib/
-│  ├─ Io/                 ← Pin-Abstraktion ESP32 + MCP23017  (Basis)
-│  ├─ Heizung/            ← Etagenheizung: Taster + Hysterese (Vorlage-Modul)
-│  ├─ Aufzug/             ← Brushed-DC + Seilwinde, Zustandsautomat
-│  ├─ Licht/              ← NeoPixel-Raumlicht
-│  ├─ DiscoLight/         ← NeoPixel-Stimmungslicht (Animation)
-│  ├─ Servoaktor/         ← Servos am PCA9685 (Dachfenster/Jalousie/Garage)
-│  ├─ Alarm/              ← Alarmrelais + Buzzer
-│  ├─ Sensorik/           ← Temperatur/Helligkeit/Feuchte (aktuell simuliert)
-│  └─ Kommunikation/      ← JSON-Link zum Raspberry Pi
-├─ src/
-│  └─ main.cpp            ← Objekte + setup()/loop() + REGELUNGSLOGIK
-└─ platformio.ini
-```
+Alle Pins/Adressen/Parameter stehen zentral in [`include/Config.h`](include/Config.h).
 
-> **Wichtig:** In PlatformIO muss jedes Modul einen **eigenen Unterordner** in
-> `lib/` haben. Lose `.cpp`-Dateien direkt in `lib/` werden **nicht** kompiliert.
+**I2C-Bus** (SDA=21, SCL=22), gemeinsam genutzt:
+| Baustein | Adresse | Rolle |
+|----------|---------|-------|
+| MCP23017 #1 | `0x20` | **Eingänge** (alle `INPUT_PULLUP`): Taster, Reeds |
+| MCP23017 #2 | `0x24` (Test mit 1 MCP; final `0x21`) | **Ausgänge** (Transistoren, active-high): Heiz-/Kühl-LEDs |
+| PCA9685 | `0x40` | **Servos** (Jalousien, Dachfenster, Garage) |
 
----
+**ESP32-native Pins:**
+| Funktion | Pin(s) |
+|----------|--------|
+| Licht (6 PWM-MOSFET-Kanäle) | K0=2 Außen, K1=4 Tür, K2=5 EG, K3=18 OG1, K4=19 OG2, K5=23 Reserve |
+| Aufzug-Stepper 28BYJ-48 (IN1-4) | 25 / 26 / 27 / 14 |
+| DHT (Temp/Feuchte) | 13 |
+| Solarpanel (= zugleich Helligkeit), 50/50-Teiler an ADC | 36 (Sensor VP) |
+| DiscoLight WS2813 (FastLED) | 0 |
+| UART2 → Raspberry Pi (RX/TX) | 16 / 17 |
 
-## 3. Konfiguration & der MCP23017
+**MCP-Eingänge (#1):** Klima-Taster EG/OG1/OG2 = 0/1/2 · Aufzug-Ruftaster = 3/4/5 ·
+Aufzug-Etagen-Reeds = 6/7/8 · oberer Überfahr-Schalter = 9 · Reed Tür = 10.
+**MCP-Ausgänge (#2):** Heiz-LED EG/OG1/OG2 = 0/1/2 · Kühl-LED EG/OG1/OG2 = 3/4/5.
 
-Da sehr viele GPIOs gebraucht werden, kommt der I2C-Port-Expander **MCP23017**
-(16 zusätzliche Pins) zum Einsatz. Damit Module nicht wissen müssen, wo ein Pin
-sitzt, gibt es die **Io-Schicht** und den Typ `IoPin`:
-
-```cpp
-// in include/Config.h:
-constexpr IoPin HEIZUNG_EG_TASTER = mcpPin(0);   // Pin 0 am MCP23017
-constexpr IoPin AUFZUG_MOTOR_ENABLE = espPin(26); // GPIO 26 direkt am ESP32
-```
-
-```cpp
-// im Modul (egal ob ESP- oder MCP-Pin):
-io.pinMode(_tasterPin, INPUT_PULLUP);
-int x = io.digitalRead(_tasterPin);
-```
-
-**Pin umstecken = nur eine Zeile in `Config.h` ändern.** Aktuelle Belegung
-(Auszug, Stand Gerüst – bei realem Aufbau anpassen):
-
-| Funktion                     | Ort        | Pin/Kanal |
-|------------------------------|------------|-----------|
-| I2C SDA / SCL                | ESP32      | 21 / 22   |
-| Link zum Pi (RX/TX, UART2)   | ESP32      | 16 / 17   |
-| DS18B20 (1-Wire)             | ESP32      | 4         |
-| Aufzug Endschalter oben/unten| ESP32      | 32 / 33   |
-| Aufzug Motor Richtung/Enable | ESP32      | 25 / 26   |
-| NeoPixel Licht / Disco       | ESP32      | 5 / 18    |
-| Heizung Taster EG/OG1/OG2    | MCP23017   | 0 / 1 / 2 |
-| Heizung LED EG/OG1/OG2       | MCP23017   | 8 / 9 /10 |
-| PIR Wohnzimmer / Schlafz.    | MCP23017   | 3 / 4     |
-| Reed Tür EG / Fenster OG     | MCP23017   | 5 / 6     |
-| Alarmrelais / Buzzer         | MCP23017   | 11 / 12   |
-| Servos (Dachfenster/Jal./Tor)| PCA9685    | 0–4       |
-
-> **Konvention:** Taster/Endschalter als `INPUT_PULLUP` gegen GND verdrahten
-> (gedrückt = LOW). Reed/PIR im Gerüst als „offen/aktiv = HIGH“ angenommen –
-> bei der realen Verdrahtung in `main.cpp` (`regelung()`) ggf. invertieren.
+> Konvention: Eingänge `INPUT_PULLUP`, aktiv/geschlossen = LOW. Ausgänge active-high
+> (HIGH = Transistor leitet). Aktuell ist im Test nur **ein** MCP (Ausgänge, `0x24`)
+> angeschlossen; für den vollen Betrieb wird der Eingangs-MCP (`0x20`) benötigt.
 
 ---
 
-## 4. Serielles Protokoll (ESP32 ↔ Raspberry Pi)
+## 2. Software-Architektur
 
-Eine **JSON-Nachricht pro Zeile** (`\n`-terminiert), 115200 Baud auf UART2.
+**Trennung „Entscheiden ↔ Ausführen" über einen zentralen Soll-Zustand** (Blackboard).
+Jede `loop()`:
 
-**Pi → ESP (Befehle)**
-
-```json
-{"cmd":"heizung","raum":"og2","set":1}     // Heizung OG2 manuell an (set:0 = Automatik)
-{"cmd":"aufzug","etage":2}                  // Aufzug zu Etage fahren (0=EG,1=OG1,2=OG2)
-{"cmd":"disco","set":1}                     // Disco-Licht an/aus
-{"cmd":"alarm","set":1}                     // Alarm scharf/unscharf
+```
+Eingänge + Sensoren ─► Kontext
+        │
+        ▼   Regel-Schichten schreiben in den Soll (setze(feld, wert, PRIO) – höchste Prio gewinnt)
+   tageszeitRegeln (20/60)  ·  sensorRegeln (40)  ·  handRegeln (100)  ·  dashboardRegeln (80)
+        │
+        ▼   interlocks(soll)   – Konflikte prioritätsbewusst auflösen
+        ▼   anwenden(soll)     – EINZIGE Hardware-Stelle (Module ansteuern)
+        ▼   aufzugBedienen()   – eigenes Zustands-Subsystem (nicht über Soll)
+        ▼   telemetrie(k, s)   – Frame an den Pi (nur bei Änderung + Heartbeat)
 ```
 
-**ESP → Pi (Status)**
+**Leitprinzipien:** Module in `lib/` sind *dumme Treiber* (kein eigenes „Wissen"),
+die Logik steht in `Regelung` + `main`. Konfiguration zentral in `Config.h`.
+Kooperativ & nicht-blockierend (`millis()`, **kein `delay()`** in der Loop).
+Jedes Modul besitzt seinen Chip selbst (DigitalInput → MCP-IN, DigitaleOutputs →
+MCP-OUT, Servoaktor → PCA9685); `Wire.begin()` einmal in `setup()`.
 
-```json
-{"typ":"status","temp_eg":21.4}
-{"typ":"status","heizung_og2":true}
-{"typ":"status","aufzug_etage":2}
-```
-
-Neue Befehle werden in `verarbeiteBefehl()` (in `main.cpp`) ergänzt, neue
-Statuswerte in `statusSenden()`. Dieses Protokoll bitte mit der Dashboard-Gruppe
-abstimmen.
+**Automatik-Stopp (Freeze):** Dashboard-Kommando `auto_stop` friert Tageszeit+Sensor
+beim letzten Stand ein (Snapshot), Taster + Dashboard bleiben aktiv. TTL 5 min
+(`FREEZE_TTL_MS`), danach automatisch zurück in Automatik.
 
 ---
 
-## 5. Bauen, flashen, testen
+## 3. Module (`lib/`) – wer macht was
+
+| Modul | Aufgabe |
+|-------|---------|
+| `Regelung` | Soll-Zustand + Schicht-Funktionen + Interlocks + Kontext + TasterState/Freeze |
+| `DigitalInput` | besitzt MCP-IN; entprellt + Flankenerkennung (`gedrueckt`/`geradeGedrueckt`) |
+| `DigitaleOutputs` | besitzt MCP-OUT; `heizen(Etage,an)` / `kuehlen(Etage,an)` |
+| `Servoaktor` | PCA9685; `fahreJalousie/fahreDachfenster/fahreGarage` (sanft, `servosUpdate()`) |
+| `Aufzug` | 28BYJ-48 / ULN2003 (IN1-4, Halbschritt); `fahreZu` / `update(reeds, oben)` |
+| `Licht` | 6 PWM-Kanäle (IRLZ44N-MOSFET), `setKanal(kanal, stufe 0..3)` |
+| `DiscoLight` | WS2813 / FastLED, nicht-blockierende Animation |
+| `Sensorik` | 1× DHT (Temp/Feuchte) + Solar (= Helligkeit) |
+| `Kommunikation` | JSON-Telemetrie + Befehlsempfang (UART2) |
+
+---
+
+## 4. Klima-Logik (pro Etage)
+
+3 Modi pro Etage: **Automatik / Heizen / Kühlen**. Quelle ist der Etagentaster
+(`TasterState`, mit TTL) — und künftig das Dashboard (setzt denselben Modus, *nicht*
+direkt die Heizung). `handRegeln` macht aus dem Modus die Ausgänge:
+Heizen → rote LED, Kühlen → blaue LED.
+
+**Zentrale Klimaanlage:** läuft, sobald **irgendeine** Etage kühlt
+(`klimaanlage = ODER(kühlen)`). Das Dashboard greift **nicht** direkt auf die AC zu.
+**OG2-Dachfenster** öffnen **nur**, wenn die **OG2** kühlt (AC durch eine andere
+Etage ⇒ Dachfenster bleiben zu).
+
+---
+
+## 5. Dashboard / Telemetrie (UART2, JSON pro Zeile)
+
+- **ESP → Pi:** Telemetrie-Frame (`type:"telemetry"`) mit `time` (10-Min-quantisiert),
+  `temp`, `humidity`, `auto_active`, `outdoor`, `roof` (inkl. `pv_voltage`), `floors`.
+  Gesendet nur bei Änderung + 5-s-Heartbeat.
+- **Pi → ESP:** Befehle `{"cmd":"...","value":..,"floor":".."}` → `behandleBefehl()`
+  in `Kommunikation.cpp` (Overrides mit TTL in `DashboardState`).
+- Schema-Referenz: `src/dashboardConnections.cpp` (frühe Skizze, dient als
+  Protokoll-Dokumentation; Modi-Konvention etc.).
+
+---
+
+## 6. Bauen, flashen, testen
 
 ```bash
-pio run                 # kompilieren
-pio run -t upload       # auf den ESP32 flashen
-pio device monitor      # serielle Debug-Ausgabe (USB, 115200)
+PIP_USER=0 pio run            # kompilieren  (PIP_USER=0 ist auf diesem Rechner nötig!)
+PIP_USER=0 pio run -t upload  # flashen
+pio device monitor            # serielle Ausgabe (USB, 115200)
 ```
 
-(In VS Code alternativ die PlatformIO-Buttons unten in der Statusleiste.)
-
-**Ohne Hardware testen:** Das Modul `Sensorik` liefert vorerst **simulierte**
-Messwerte. Dadurch läuft die komplette Regelungslogik schon, bevor die Sensoren
-verbaut sind. Echte Sensoren werden in `lib/Sensorik/Sensorik.cpp` Schritt für
-Schritt eingebaut (Anleitung steht dort im Kommentar; Bibliotheken in
-`platformio.ini` einkommentieren).
+**Welches Programm gebaut wird, steuert `build_src_filter` in `platformio.ini`:**
+- `+<main.cpp>` → das echte Hauptprogramm
+- `+<aufzugTest.cpp>` / `+<mcpTest.cpp>` → Bring-up-Tests (Aufzug bzw. 2×MCP+PCA)
+- weitere Test-Sketches: `discoLightTest`, `ledDriver`, `integrationTest`
 
 ---
 
-## 6. Funktionsumfang (aus dem Projekt-Interview)
+## 7. Aktueller Stand je Subsystem
 
-| Subsystem        | Umsetzung                                                        | Status im Gerüst |
-|------------------|-----------------------------------------------------------------|------------------|
-| Heizung (3 Et.)  | Taster = manuell an, sonst Zweipunkt-Hysterese (LED-simuliert)   | ✅ fertig        |
-| Aufzug           | Brushed-DC, Referenzfahrt + 2 Endschalter + Zeit + Timeout       | ✅ fertig        |
-| Beleuchtung      | NeoPixel, Automatik „Bewegung + Dunkelheit“ (Regel in `main`)    | ✅ fertig        |
-| Disco-/Stimmung  | NeoPixel-Animation                                               | ✅ fertig        |
-| Beschattung/Dach | Servos am PCA9685 (`Servoaktor`)                                 | ✅ Grundfunktion |
-| Sicherheit       | Reed/PIR → Alarmrelais + Buzzer (scharf/unscharf)               | ✅ Grundfunktion |
-| Sensorik         | DS18B20 / BH1750 / SHT31                                         | 🟡 simuliert     |
-| Pi-Anbindung     | UART2, JSON-Zeilen                                               | ✅ Grundgerüst   |
-
-**Automatik-Regeln** (zentral in `regelung()` in `main.cpp`):
-1. Dachfenster OG2 schließen, wenn dort die Heizung läuft.
-2. Licht an bei Bewegung **und** Dunkelheit.
-3. Alarm auslösen bei Tür-/Fensterkontakt, wenn scharf geschaltet.
-4. Jalousie schließen bei hoher Helligkeit.
+| Subsystem | Stand |
+|-----------|-------|
+| Klima Heizen/Kühlen pro Etage (Taster) | ✅ funktioniert (Hand-Modus „hart an") |
+| Licht (6 Kanäle, Tageszeit) | ✅ funktioniert |
+| Disco (OG2, Disco↔Licht-Interlock) | ✅ funktioniert |
+| Jalousien / Dachfenster / Garage (Servos) | ✅ Grundfunktion (Layout siehe §8) |
+| Aufzug (Stepper, Ruftaster, Reeds, oberer Schalter, Richtungswechsel) | ✅ funktioniert |
+| Sensorik DHT (Temp/Feuchte) + Solar | ✅ eingebunden |
+| Dashboard Telemetrie + Befehle + Freeze | ✅ funktioniert |
+| Sensor-Regeln (`sensorRegeln`) | 🟡 leer – Logik folgt |
+| Klimaanlage / Dachfenster-Kopplung an Kühlen | 🟡 offen (siehe §8) |
+| Dashboard setzt Klima-Modus (statt direkt Heizung) | 🟡 offen |
+| Garage-Ultraschall, Whirlpool, TV-Display | 🔲 geplant |
 
 ---
 
-## 7. Ein neues Modul hinzufügen
+## 8. Offene Punkte / nächste Schritte (Finalisierung)
 
-1. Ordner `lib/MeinModul/` anlegen, darin `MeinModul.h` + `MeinModul.cpp`.
-2. Klasse nach dem Muster von `Heizung` bauen: Konstruktor nimmt Pins/Parameter
-   (`IoPin`), dann `begin()` und `update()`. Hardware nur über `io.*`.
-3. Pins/Parameter in `include/Config.h` eintragen (`espPin(...)`/`mcpPin(...)`).
-4. In `src/main.cpp`: Objekt anlegen, in `setup()` `begin()`, in `loop()` `update()`.
-5. Bei Bedarf Befehl in `verarbeiteBefehl()` und Status in `statusSenden()` ergänzen.
+**Klima & Lüftung**
+- [ ] Dashboard `heat`/Kühlung → setzt **Klima-Modus** pro Etage (wie Taster), nicht direkt `s.heizung`.
+- [ ] Kühlung pro Etage auch vom Dashboard setzbar (blaue LED am Bediengerät).
+- [ ] `klimaanlage = ODER(kühlen[Etage])`; **OG2-Dachfenster nur bei `kühlen[OG2]`**.
+- [ ] Interlock entsprechend reaktivieren.
+
+**Aufräumen (bestätigte Relikte)**
+- [ ] `klappe[]` aus dem Soll entfernen (keine Klappen verbaut – nur zentrale AC).
+- [ ] `bewegung` aus dem Kontext entfernen (kein PIR; Helligkeit kommt vom Solar).
+- [ ] `dash.mode`-Empfang entfernen (nicht genutzt).
+- [ ] Telemetrie `skylight1`+`skylight2` = **beide OG2** (kein EG-Dachfenster).
+
+**Neue Features**
+- [ ] **Garage:** Ultraschallsensor → Tor (Servo) auf + Licht (gleichgeschaltet mit **Türlicht**, Kanal K1). Pins/Schwelle in Config.
+- [ ] **Whirlpool:** DC-Motor über PWM + MOSFET (eigener Kanal/Pin + Soll-Feld).
+- [ ] **Fernseher:** I2C-Display (am gemeinsamen I2C-Bus).
+- [ ] **Jalousien-Layout:** EG = **1**, OG1 = **2**, OG2 = **2** (gesamt 5 Servos) – Soll/Telemetrie anpassen (EG nur `blind1`).
+
+**Telemetrie vervollständigen**
+- [ ] `floors[..].mode` aus dem realen Klima-Modus (0=Auto,1=Heizen,2=Kühlen) füllen.
+- [ ] `elevator.floor` aus `aufzug.aktuelleEtage()` füllen.
+- [ ] `whirlpool` / `tv` / `garage` an reale Quellen koppeln (sobald Aktoren da).
+
+**Sensorik/Regelung**
+- [ ] `k.helligkeit` aus dem Solar-Wert ableiten; `sensorRegeln` füllen (Hysterese, Beschattung, Licht).
+
+**Aufzug-Betriebssicherheit**
+- [ ] `FEHLER` quittierbar (Dashboard/Taster) + Referenzfahrt nach EG beim Start/nach Fehler.
+
+**Hardware/Config**
+- [ ] Zweiten MCP anschließen, `ADDR_MCP_OUT` von `0x24` auf `0x21` (final).
+- [ ] Servo-Endlagen je Servo einmessen; Aufzug-Schritttakt feinjustieren.
 
 ---
 
-## 8. Zusammenarbeit über GitHub (Empfehlung)
-
-- `main` bleibt immer baubar. Entwickelt wird in **Feature-Branches**
-  (z. B. `feature/aufzug-tuning`), zusammengeführt per **Pull Request**.
-- **Modul-Eigentümer:** Pro Modul möglichst eine Person, damit Merge-Konflikte
-  selten sind. `Config.h` und `main.cpp` werden von beiden angefasst → dort kleine,
-  klar getrennte Blöcke pflegen und Änderungen kurz absprechen.
-- Aussagekräftige Commits, vor dem Push einmal `pio run` (baut es?).
-```
-git checkout -b feature/<thema>
-# ... arbeiten ...
-git add -A && git commit -m "Aufzug: Timeout-Schutz ergaenzt"
-git push -u origin feature/<thema>
-# danach Pull Request auf GitHub
-```
-
----
-
-## 9. Offene Punkte / TODO
-
-- [ ] Echte Sensoren in `Sensorik` anbinden (DS18B20, BH1750, SHT31).
-- [ ] Fahrzeiten des Aufzugs einmessen (`AUFZUG_ZEIT_*` in `Config.h`).
-- [ ] Servo-Endlagen je Servo einmessen (`SERVO_TICK_ZU/AUF`).
-- [ ] Reale Pin-Belegung & Logikpegel (Reed/PIR) gegen den Schaltplan prüfen.
-- [ ] Protokoll mit der Dashboard-Gruppe final abstimmen.
-- [ ] FEHLER-Zustand des Aufzugs quittierbar machen (z. B. per Pi-Befehl).
-```
+## 9. Zusammenarbeit (GitHub)
+Entwicklung in Feature-Branches, Merge per Pull Request; `Config.h`/`main.cpp` werden
+von beiden angefasst → kleine, klar getrennte Blöcke. Vor dem Push einmal
+`PIP_USER=0 pio run` (baut es?).

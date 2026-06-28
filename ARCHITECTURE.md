@@ -4,6 +4,13 @@ Dieses Dokument beschreibt den **Software-Aufbau** der Steuerung/Regelung.
 Es ist die gemeinsame Referenz fürs Team. Hardware-Pins stehen in
 [`include/Config.h`](include/Config.h).
 
+> ⚠️ **Stand-Hinweis:** Den *aktuellen* Hardware-/Feature-Stand und die offenen
+> Punkte führt [`README.md`](README.md). Das Grundprinzip unten (Soll-Zustand,
+> Prioritäts-Schichten, Interlocks, kooperative Loop) gilt weiterhin — **aber**
+> die früher erwähnte „Io-Schicht" gibt es nicht mehr: jedes Modul besitzt seinen
+> Chip selbst (DigitalInput→MCP-IN, DigitaleOutputs→MCP-OUT, Servoaktor→PCA9685).
+> Ebenso sind einige Aktoren/Felder überholt (siehe README §8 „Offene Punkte").
+
 ## 1. Grundprinzip
 
 - **`lib/` = dumme Treiber.** Jedes Modul steuert genau ein Hauselement und
