@@ -71,6 +71,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   doc["temp"]     = k.temperatur;   // EIN Sensor fuers ganze Haus
   doc["humidity"] = k.feuchte;
   doc["auto_active"] = !k.automatikAus;   // true = Automatik laeuft, false = eingefroren (Handbetrieb)
+  doc["greenhouse"]["soil_moisture"] = k.bodenfeuchte;   // Gewaechshaus-Bodenfeuchte (% 0..100)
 
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
   outdoor["ext_light"] = s.licht[0].wert;
@@ -81,15 +82,15 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
 
   JsonObject roof = doc["roof"].to<JsonObject>();
   roof["pv_voltage"] = k.pvSpannung;                          // Solar-Spannung (V)
-  roof["skylight1"]  = 0;                                     // TODO: kein Soll-Feld (EG-Dachfenster)
-  roof["skylight2"]  = klappeZuBool(s.dachfensterOG2.wert);   // OG2/E2
+  roof["skylight1"]  = klappeZuBool(s.dachfensterOG2.wert);   // beide Dachfenster sind im OG2
+  roof["skylight2"]  = klappeZuBool(s.dachfensterOG2.wert);   // (ein Soll-Feld steuert beide)
   roof["ac"]         = s.klimaanlage.wert;                    // 0/1
  
   JsonObject floors = doc["floors"].to<JsonObject>();
  
   // ── EG (Soll-Index 0) ────────────────────────────────────────────────────
   JsonObject eg = floors["EG"].to<JsonObject>();
-  eg["mode"]   = 0;   // TODO: keine 0..4-Quelle (klimaModus deckt nur 0..2)
+  eg["mode"]   = (int)k.klimaModus[0];   // 0=Auto, 1=Heizen, 2=Kuehlen
   eg["blind1"] = jalousieZuBlind(s.jalousie[0][0].wert);
   eg["blind2"] = jalousieZuBlind(s.jalousie[0][1].wert);
   eg["heat"]  = s.heizung[0].wert;   // Soll kennt nur 1 Heizwert/Etage ->
@@ -97,7 +98,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
  
   // ── E1 (Soll-Index 1) ────────────────────────────────────────────────────
   JsonObject e1 = floors["E1"].to<JsonObject>();
-  e1["mode"]   = 0;   // TODO
+  e1["mode"]   = (int)k.klimaModus[1];
   e1["blind1"] = jalousieZuBlind(s.jalousie[1][0].wert);
   e1["blind2"] = jalousieZuBlind(s.jalousie[1][1].wert);
   e1["heat"]  = s.heizung[1].wert;
@@ -106,14 +107,14 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
  
   // ── E2 / OG2 (Soll-Index 2) ──────────────────────────────────────────────
   JsonObject e2 = floors["E2"].to<JsonObject>();
-  e2["mode"]   = 0;   // TODO
+  e2["mode"]   = (int)k.klimaModus[2];
   e2["blind1"] = jalousieZuBlind(s.jalousie[2][0].wert);
   e2["blind2"] = jalousieZuBlind(s.jalousie[2][1].wert);
   e2["heat"]  = s.heizung[2].wert;
   e2["light"]  = s.licht[4].wert;
   e2["party"]  = s.disco.wert;
  
-  doc["elevator"]["floor"] = 0;   // TODO: keine Quelle (Aufzug-Modul)
+  doc["elevator"]["floor"] = k.aufzugEtage;   // 0=EG, 1=OG1, 2=OG2
  
   String out;
   if (doc.overflowed()) return out;   // leer -> wird nie gesendet
@@ -160,7 +161,6 @@ void behandleBefehl(JsonDocument& doc, DashboardState& dash) {
   else if (!strcmp(cmd, "light"))  { if (et >= 0) dashSetze(dash.light[et], val); }
   else if (!strcmp(cmd, "ext_light"))  dashSetze(dash.ext_light,  val);
   else if (!strcmp(cmd, "door_light")) dashSetze(dash.door_light, val);
-  else if (!strcmp(cmd, "mode"))   { if (et >= 0) dashSetze(dash.mode[et],  val); }
   else if (!strcmp(cmd, "party"))      dashSetze(dash.party,      val);
   else if (!strcmp(cmd, "ac"))         dashSetze(dash.ac,         val);
   else if (!strcmp(cmd, "skylight2"))  dashSetze(dash.skylight2,  val);

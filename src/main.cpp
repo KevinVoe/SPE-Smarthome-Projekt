@@ -116,6 +116,7 @@ void loop() {
   // 4) Anwenden  +  Aufzug (eigenes Subsystem)  +  Telemetrie
   anwenden(soll);
   aufzugBedienen();
+  k.aufzugEtage = (uint8_t)aufzug.aktuelleEtage();   // fuer die Telemetrie
   telemetrie(k, soll);
 
   // Debug-Ausgabe (1x pro Sekunde)
@@ -139,11 +140,12 @@ void eingaengeLesen(Kontext& k) {
 //  SENSOREN  –  Messwerte in den Kontext schreiben
 // =============================================================================
 void sensorenLesen(Kontext& k) {
-  sensorik.update();                      // DHT (alle 2 s) + Solar
-  k.temperatur = sensorik.temperatur();   // EIN Sensor fuers ganze Haus
-  k.feuchte    = sensorik.feuchte();
-  k.pvSpannung = sensorik.pvSpannung();
-  // k.helligkeit / k.bewegung: noch kein Sensor angebunden (Default bleibt).
+  sensorik.update();                       // DHT (alle 2 s) + Solar + Bodenfeuchte
+  k.temperatur   = sensorik.temperatur();  // EIN Sensor fuers ganze Haus
+  k.feuchte      = sensorik.feuchte();
+  k.pvSpannung   = sensorik.pvSpannung();
+  k.bodenfeuchte = sensorik.bodenfeuchte();// Gewaechshaus
+  k.helligkeit   = sensorik.pvSpannung();  // Solarpanel dient zugleich als Helligkeit (grob)
 }
 
 // =============================================================================
@@ -198,7 +200,7 @@ void anwenden(const Soll& s) {
   Position dachPos = s.dachfensterOG2.wert >= 50 ? Position::AUF : Position::ZU;
   fahreDachfenster(dachPos, Seite::LINKS);
   fahreDachfenster(dachPos, Seite::RECHTS);
-  // TODO: s.klappe[] (Luftklappen) und s.klimaanlage haben noch keinen Aktor.
+  // Hinweis: s.klimaanlage hat (noch) keinen physischen Ausgang - nur Logik/Telemetrie.
 
   // ── Disco (NeoPixel) ───────────────────────────────────────────────────────
   static uint8_t letzterDisco = 0;
@@ -236,12 +238,11 @@ void telemetrie(const Kontext& k, const Soll& s) {
 
 // Kompakte Statuszeile zum Mitlesen.
 void debugAusgabe(const Kontext& k, const Soll& s) {
-  Serial.printf("t=%5.2fh  Heiz[%d%d%d] Kuehl[%d%d%d] Klappe[%d%d%d] "
+  Serial.printf("t=%5.2fh  Heiz[%d%d%d] Kuehl[%d%d%d] "
                 "AC=%d DachOG2=%d Disco=%d  Licht[%d%d%d|%d%d%d]\n",
     k.stunde,
     s.heizung[0].wert,  s.heizung[1].wert,  s.heizung[2].wert,
     s.kuehlLed[0].wert, s.kuehlLed[1].wert, s.kuehlLed[2].wert,
-    s.klappe[0].wert > 0, s.klappe[1].wert > 0, s.klappe[2].wert > 0,
     s.klimaanlage.wert, s.dachfensterOG2.wert > 0, s.disco.wert,
     s.licht[0].wert, s.licht[1].wert, s.licht[2].wert,
     s.licht[3].wert, s.licht[4].wert, s.licht[5].wert);

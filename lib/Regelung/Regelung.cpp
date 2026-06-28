@@ -183,24 +183,21 @@ void interlocks(Soll& s) {
       }
     }
 
-    // Heizen -> Klappe zu (mit Prio des Heizens, damit der Sensor sie nicht oeffnet).
-    if (heizen) setze(s.klappe[e], 0, s.heizung[e].prio);
-
-    // Kuehlen -> Klappe auf + zentrales Dachfenster auf (Prio des Kuehlens).
-    if (kuehlen) {
-      setze(s.klappe[e], 100, s.kuehlLed[e].prio);
-      setze(s.dachfensterOG2, 100, s.kuehlLed[e].prio);
-    }
   }
 
-  // Zentrale Klimaanlage = ODER ueber alle Etagen mit offener Klappe (= Luftbedarf).
+  // Zentrale Klimaanlage = ODER ueber alle KUEHLENDEN Etagen (keine Klappen verbaut).
   bool acAn = false; uint8_t acPrio = 0;
   for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
-    if (s.klappe[e].wert != 0) {
+    if (s.kuehlLed[e].wert != 0) {
       acAn = true;
-      if (s.klappe[e].prio > acPrio) acPrio = s.klappe[e].prio;
+      if (s.kuehlLed[e].prio > acPrio) acPrio = s.kuehlLed[e].prio;
     }
   setze(s.klimaanlage, acAn ? 1 : 0, acPrio);
+
+  // OG2-Dachfenster oeffnen NUR, wenn die OG2 kuehlt (AC durch eine andere
+  // Etage -> Dachfenster bleiben zu).
+  if (s.kuehlLed[OG2].wert != 0)
+    setze(s.dachfensterOG2, 100, s.kuehlLed[OG2].prio);
 
   // Disco (OG2) und OG2-Raumlicht schliessen sich aus (selber Raum). Der hoeher
   // Priorisierte gewinnt; bei Gleichstand gewinnt die Disco.

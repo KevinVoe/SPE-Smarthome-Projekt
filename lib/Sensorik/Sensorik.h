@@ -29,6 +29,7 @@ public:
   float temperatur();     // Grad Celsius, z.B. 22.5
   float feuchte();        // Relative Feuchte in %, z.B. 48.0
   float pvSpannung();     // Solar-Spannung in Volt (ueber 50/50-Teiler am ADC)
+  float bodenfeuchte();   // Gewaechshaus-Bodenfeuchte in % (0=trocken, 100=nass)
 
   // Letzter Lesezyklus erfolgreich? (false = Sensor nicht angeschlossen/defekt)
   bool istOk() const { return _ok; }
@@ -38,6 +39,7 @@ private:
   float    _temp    = 0.0f;
   float    _feuchte = 0.0f;
   float    _pv      = 0.0f;
+  float    _boden   = 0.0f;
   bool     _ok      = false;
   uint32_t _letzt   = 0;
 };

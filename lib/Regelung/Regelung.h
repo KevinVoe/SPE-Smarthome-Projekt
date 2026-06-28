@@ -52,8 +52,7 @@ struct Feld {
 struct Soll {
   Feld heizung[ANZ_ETAGEN];               // 0/1  rote LED
   Feld kuehlLed[ANZ_ETAGEN];              // 0/1  blaue LED
-  Feld klappe[ANZ_ETAGEN];                // 0=zu,100=auf  (Luftklappe je Etage)
-  Feld klimaanlage;                       // 0/1  zentrale Anlage (Dach)
+  Feld klimaanlage;                       // 0/1  zentrale Anlage (Dach) = ODER(kuehlen)
   Feld dachfensterOG2;                    // 0=zu,100=auf
   Feld jalousie[ANZ_ETAGEN][ANZ_SEITEN];  // 0=offen,100=ganz beschattet
   Feld licht[ANZ_LICHT];                  // Stufe 0..3
@@ -67,8 +66,9 @@ struct Kontext {
   float      temperatur  = 21.0f;         // EIN Sensor fuers ganze Haus (°C)
   float      feuchte     = 50.0f;         // relative Feuchte (%rF)
   float      pvSpannung  = 0.0f;          // Solar-Spannung (V)
-  float      helligkeit  = 100.0f;        // Lux
-  bool       bewegung    = false;         // PIR (vorerst vereinfacht global)
+  float      helligkeit  = 100.0f;        // wird aus dem Solar-Wert abgeleitet
+  float      bodenfeuchte = 0.0f;         // Gewaechshaus-Bodenfeuchte (% 0=trocken,100=nass)
+  uint8_t    aufzugEtage = 0;             // aktuelle Aufzug-Etage (fuer Telemetrie)
   int8_t     sonnenSeite = -1;            // -1 keine, 0 links, 1 rechts
   KlimaModus klimaModus[ANZ_ETAGEN] = { KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK };
   bool       discoWunsch = false;
@@ -87,7 +87,6 @@ struct DashboardState {
   DashBefehl heat[ANZ_ETAGEN];
   DashBefehl light[ANZ_ETAGEN];
   DashBefehl ext_light, door_light;
-  DashBefehl mode[ANZ_ETAGEN];
   DashBefehl party, ac, skylight2;
   DashBefehl tv, skylight1, garage, front_door, elevator;  // (noch) ohne Soll-Feld
   DashBefehl autostop;   // Automatik-Stopp (Freeze) vom Dashboard - eigene TTL (FREEZE_TTL_MS)

@@ -27,8 +27,9 @@ Alle Pins/Adressen/Parameter stehen zentral in [`include/Config.h`](include/Conf
 |----------|--------|
 | Licht (6 PWM-MOSFET-Kanäle) | K0=2 Außen, K1=4 Tür, K2=5 EG, K3=18 OG1, K4=19 OG2, K5=23 Reserve |
 | Aufzug-Stepper 28BYJ-48 (IN1-4) | 25 / 26 / 27 / 14 |
-| DHT (Temp/Feuchte) | 13 |
+| DHT11 (Temp/Feuchte) | 13 |
 | Solarpanel (= zugleich Helligkeit), 50/50-Teiler an ADC | 36 (Sensor VP) |
+| Gewächshaus-Wassersensor (Bodenfeuchte, analog ADC1) | 34 |
 | DiscoLight WS2813 (FastLED) | 0 |
 | UART2 → Raspberry Pi (RX/TX) | 16 / 17 |
 
@@ -82,7 +83,7 @@ beim letzten Stand ein (Snapshot), Taster + Dashboard bleiben aktiv. TTL 5 min
 | `Aufzug` | 28BYJ-48 / ULN2003 (IN1-4, Halbschritt); `fahreZu` / `update(reeds, oben)` |
 | `Licht` | 6 PWM-Kanäle (IRLZ44N-MOSFET), `setKanal(kanal, stufe 0..3)` |
 | `DiscoLight` | WS2813 / FastLED, nicht-blockierende Animation |
-| `Sensorik` | 1× DHT (Temp/Feuchte) + Solar (= Helligkeit) |
+| `Sensorik` | 1× DHT11 (Temp/Feuchte) + Solar (= Helligkeit) + Wassersensor (Gewächshaus) |
 | `Kommunikation` | JSON-Telemetrie + Befehlsempfang (UART2) |
 
 ---
@@ -137,10 +138,11 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 | Disco (OG2, Disco↔Licht-Interlock) | ✅ funktioniert |
 | Jalousien / Dachfenster / Garage (Servos) | ✅ Grundfunktion (Layout siehe §8) |
 | Aufzug (Stepper, Ruftaster, Reeds, oberer Schalter, Richtungswechsel) | ✅ funktioniert |
-| Sensorik DHT (Temp/Feuchte) + Solar | ✅ eingebunden |
+| Sensorik DHT11 (Temp/Feuchte) + Solar/Helligkeit | ✅ eingebunden |
+| Gewächshaus-Wassersensor (Bodenfeuchte) | ✅ eingebunden |
 | Dashboard Telemetrie + Befehle + Freeze | ✅ funktioniert |
 | Sensor-Regeln (`sensorRegeln`) | 🟡 leer – Logik folgt |
-| Klimaanlage / Dachfenster-Kopplung an Kühlen | 🟡 offen (siehe §8) |
+| Klimaanlage (= ODER Kühlen) / OG2-Dachfenster bei OG2-Kühlen | ✅ funktioniert |
 | Dashboard setzt Klima-Modus (statt direkt Heizung) | 🟡 offen |
 | Garage-Ultraschall, Whirlpool, TV-Display | 🔲 geplant |
 
@@ -151,14 +153,14 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 **Klima & Lüftung**
 - [ ] Dashboard `heat`/Kühlung → setzt **Klima-Modus** pro Etage (wie Taster), nicht direkt `s.heizung`.
 - [ ] Kühlung pro Etage auch vom Dashboard setzbar (blaue LED am Bediengerät).
-- [ ] `klimaanlage = ODER(kühlen[Etage])`; **OG2-Dachfenster nur bei `kühlen[OG2]`**.
-- [ ] Interlock entsprechend reaktivieren.
+- [x] `klimaanlage = ODER(kühlen[Etage])`; **OG2-Dachfenster nur bei `kühlen[OG2]`**.
+- [x] Interlock entsprechend umgesetzt (`interlocks()`).
 
 **Aufräumen (bestätigte Relikte)**
-- [ ] `klappe[]` aus dem Soll entfernen (keine Klappen verbaut – nur zentrale AC).
-- [ ] `bewegung` aus dem Kontext entfernen (kein PIR; Helligkeit kommt vom Solar).
-- [ ] `dash.mode`-Empfang entfernen (nicht genutzt).
-- [ ] Telemetrie `skylight1`+`skylight2` = **beide OG2** (kein EG-Dachfenster).
+- [x] `klappe[]` aus dem Soll entfernt (keine Klappen verbaut – nur zentrale AC).
+- [x] `bewegung` aus dem Kontext entfernt (kein PIR; Helligkeit kommt vom Solar).
+- [x] `dash.mode`-Empfang entfernt (nicht genutzt).
+- [x] Telemetrie `skylight1`+`skylight2` = **beide OG2** (kein EG-Dachfenster).
 
 **Neue Features**
 - [ ] **Garage:** Ultraschallsensor → Tor (Servo) auf + Licht (gleichgeschaltet mit **Türlicht**, Kanal K1). Pins/Schwelle in Config.
@@ -167,12 +169,15 @@ pio device monitor            # serielle Ausgabe (USB, 115200)
 - [ ] **Jalousien-Layout:** EG = **1**, OG1 = **2**, OG2 = **2** (gesamt 5 Servos) – Soll/Telemetrie anpassen (EG nur `blind1`).
 
 **Telemetrie vervollständigen**
-- [ ] `floors[..].mode` aus dem realen Klima-Modus (0=Auto,1=Heizen,2=Kühlen) füllen.
-- [ ] `elevator.floor` aus `aufzug.aktuelleEtage()` füllen.
+- [x] `floors[..].mode` aus dem realen Klima-Modus (0=Auto,1=Heizen,2=Kühlen) gefüllt.
+- [x] `elevator.floor` aus `aufzug.aktuelleEtage()` gefüllt.
+- [x] `greenhouse.soil_moisture` aus dem Wassersensor (0=trocken…100=nass).
 - [ ] `whirlpool` / `tv` / `garage` an reale Quellen koppeln (sobald Aktoren da).
 
 **Sensorik/Regelung**
-- [ ] `k.helligkeit` aus dem Solar-Wert ableiten; `sensorRegeln` füllen (Hysterese, Beschattung, Licht).
+- [x] `k.helligkeit` aus dem Solar-Wert abgeleitet.
+- [x] Gewächshaus-Wassersensor (analog, GPIO34) → `k.bodenfeuchte` (kalibrierbar in Config).
+- [ ] `sensorRegeln` füllen (Hysterese, Beschattung, Licht) – nutzt `temperatur`/`helligkeit`.
 
 **Aufzug-Betriebssicherheit**
 - [ ] `FEHLER` quittierbar (Dashboard/Taster) + Referenzfahrt nach EG beim Start/nach Fehler.

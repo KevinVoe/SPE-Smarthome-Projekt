@@ -101,8 +101,13 @@ constexpr float   BESCHATTUNG_HELL_LUX = 800.0f;  // ab hier Jalousie schliessen
 //  Sensorik (DHT11/22, Ultraschall, Solarpanel)
 // =============================================================================
 constexpr int SENSORIK_DHT_PIN   = 13;   // DHT11/22-Datenpin (GPIO13)
-constexpr int SENSORIK_DHT_TYP   = 22;   // DHT-Typ (DHT11 oder DHT22)
-constexpr int SENSORIK_SOLAR_PIN = 36;   // Solarpanel ueber 50/50-Teiler an ADC1 (Sensor VP, input-only)
+constexpr int SENSORIK_DHT_TYP   = 11;   // DHT-Typ (11 = DHT11, 22 = DHT22)
+constexpr int SENSORIK_SOLAR_PIN = 36;   // Solarpanel ueber 50/50-Teiler an ADC1 (Sensor VP, input-only); dient zugleich als Helligkeit
+//  Water Sensor (Gewaechshaus-Bodenfeuchte), analog an ADC1 (input-only).
+//  Kalibrieren: trocken in Luft -> TROCKEN-Rohwert, in Wasser -> NASS-Rohwert.
+constexpr int SENSORIK_WASSER_PIN     = 34;    // Signal (analog, ADC1_CH6)
+constexpr int SENSORIK_WASSER_TROCKEN = 3000;  // ADC-Rohwert trocken (einmessen!)
+constexpr int SENSORIK_WASSER_NASS    = 1000;  // ADC-Rohwert nass    (einmessen!)
 
 // =============================================================================
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
