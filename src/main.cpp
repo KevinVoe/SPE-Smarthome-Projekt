@@ -231,7 +231,7 @@ void anwenden(const Soll& s) {
 // =============================================================================
 //  TELEMETRIE an den Pi  (max. 1x / 100 ms; sendet intern nur bei Aenderung)
 // =============================================================================
-#define TELEMETRIE_USB_SPIEGEL 1   // auf 0 setzen, um die USB-Ausgabe abzuschalten
+#define TELEMETRIE_USB_SPIEGEL 0   // auf 0 setzen, um die USB-Ausgabe abzuschalten
 
 void telemetrie(const Kontext& k, const Soll& s) {
   static uint32_t letzteMs = 0;

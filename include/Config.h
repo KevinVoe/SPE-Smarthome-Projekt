@@ -41,10 +41,10 @@ constexpr uint8_t MCPOUT_KUEHLEN[3] = { 5, 4, 3 };   // blaue LED je Etage
 // =============================================================================
 //  DIGITALE EINGAENGE  (am MCP-IN, INPUT_PULLUP; aktiv/geschlossen = LOW)
 // =============================================================================
-constexpr uint8_t  MCPIN_TASTER[3]   = { 0, 1, 2 };  // Klima-Modus-Taster je Etage
-constexpr uint8_t  MCPIN_AUFZUG_TASTER[3] = { 3, 4, 5 };  // Aufzug-Taster je Etage
-constexpr uint8_t  MCPIN_REED_AUFZUG[3]   = { 6, 7, 8 }; // Etagen-Reeds EG/OG1/OG2
-constexpr uint8_t  MCPIN_REED_AUFZUG_OBEN = 9;           // oberer Ueberfahr-Schalter (Sicherheit)
+constexpr uint8_t  MCPIN_TASTER[3]   = { 7, 6, 15 };  // Klima-Modus-Taster je Etage
+constexpr uint8_t  MCPIN_AUFZUG_TASTER[3] = { 2, 1, 0 };  // Aufzug-Taster je Etage
+constexpr uint8_t  MCPIN_REED_AUFZUG[3]   = { 5, 4, 3 }; // Etagen-Reeds EG/OG1/OG2
+constexpr uint8_t  MCPIN_REED_AUFZUG_OBEN = 8;           // oberer Ueberfahr-Schalter (Sicherheit)
 constexpr uint8_t  MCPIN_REED_TUER   = 10;            // Tuerkontakt
 constexpr uint32_t TASTER_TTL_MS     = 10000;        // Hand-Modus -> danach Automatik
 
@@ -123,8 +123,8 @@ constexpr int      AUFZUG_IN1 = 14;
 constexpr int      AUFZUG_IN2 = 27;
 constexpr int      AUFZUG_IN3 = 26;
 constexpr int      AUFZUG_IN4 = 25;
-constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 1000;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
-constexpr uint32_t AUFZUG_TIMEOUT_MS        = 15000;  // Not-Aus, falls Ziel-Endschalter nie kommt
+constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
+constexpr uint32_t AUFZUG_TIMEOUT_MS        = 600000;  // Not-Aus, falls Ziel-Endschalter nie kommt
 
 // =============================================================================
 //  WHIRLPOOL  (DC-Motor ueber MOSFET, PWM vom ESP32)

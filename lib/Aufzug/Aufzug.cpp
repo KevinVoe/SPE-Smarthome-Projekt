@@ -1,14 +1,12 @@
 #include "Aufzug.h"
 
-// 8-Phasen-Halbschritt-Sequenz fuer 28BYJ-48 (Spaltenreihenfolge IN1,IN2,IN3,IN4).
-static const uint8_t HALBSCHRITT[8][4] = {
-  {1, 0, 0, 0},
+// 4-Phasen-VOLLSCHRITT-Sequenz fuer 28BYJ-48 (Spaltenreihenfolge IN1,IN2,IN3,IN4).
+// Immer 2 Spulen gleichzeitig aktiv -> mehr Drehmoment pro Schritt, und nur
+// 2048 statt 4096 Schritte/Umdrehung -> doppelte Drehzahl bei gleichem Takt.
+static const uint8_t VOLLSCHRITT[4][4] = {
   {1, 1, 0, 0},
-  {0, 1, 0, 0},
   {0, 1, 1, 0},
-  {0, 0, 1, 0},
   {0, 0, 1, 1},
-  {0, 0, 0, 1},
   {1, 0, 0, 1},
 };
 
@@ -25,7 +23,7 @@ void Aufzug::begin() {
 
 void Aufzug::_schreibeSequenz(uint8_t idx) {
   for (uint8_t i = 0; i < 4; i++)
-    digitalWrite(_in[i], HALBSCHRITT[idx][i] ? HIGH : LOW);
+    digitalWrite(_in[i], VOLLSCHRITT[idx][i] ? HIGH : LOW);   // HALBSCHRITT -> VOLLSCHRITT
 }
 
 void Aufzug::_motorEin(bool aufwaerts) {
@@ -93,7 +91,7 @@ void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2
   unsigned long jetztUs = micros();
   if (jetztUs - _letzterStepUs >= _stepIntervalUs) {
     _letzterStepUs = jetztUs;
-    _seqIndex = (uint8_t)((_seqIndex + _richtung + 8) % 8);   // +1 auf / -1 ab
+    _seqIndex = (uint8_t)((_seqIndex + _richtung + 4) % 4);   // war: + 8) % 8
     _schreibeSequenz(_seqIndex);
   }
 }
