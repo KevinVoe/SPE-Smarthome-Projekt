@@ -1,5 +1,9 @@
 #include <cstring>
 #include "Kommunikation.h"
+
+// Diagnose: I2C-Status mit ins Telemetrie-JSON legen. Auf false setzen, dann
+// faellt das "i2c"-Feld komplett aus dem Frame (bewusst NICHT in der Protokoll-Doku).
+static constexpr bool DEBUG_I2C_STATUS = true;
  
 // ── Konvertierungs-Hilfen: Soll-Prozentwerte -> Bool-Felder im Pi-Schema ────
 // Jalousie: 0=offen,100=ganz beschattet (Soll)  ->  blind: 1=oben,0=unten (Pi)
@@ -71,6 +75,14 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   doc["temp"]     = k.temperatur;   // EIN Sensor fuers ganze Haus
   doc["humidity"] = k.feuchte;
   doc["auto_active"] = !k.automatikAus;   // true = Automatik laeuft, false = eingefroren (Handbetrieb)
+
+  // Diagnose-Feld (per DEBUG_I2C_STATUS abschaltbar; NICHT in der Protokoll-Doku).
+  if (DEBUG_I2C_STATUS) {
+    JsonObject i2c = doc["i2c"].to<JsonObject>();
+    i2c["mcp_in"]  = k.i2cMcpInOk;
+    i2c["mcp_out"] = k.i2cMcpOutOk;
+    i2c["pca"]     = k.i2cPcaOk;
+  }
 
   JsonObject outdoor = doc["outdoor"].to<JsonObject>();
   outdoor["ext_light"] = s.licht[0].wert;

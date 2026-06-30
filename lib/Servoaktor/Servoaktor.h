@@ -15,6 +15,9 @@
 // EINMAL in setup() - NACH io.begin() (der I2C-Bus muss bereits laufen).
 void servosBegin();
 
+// true, wenn der PCA9685 beim Start am I2C-Bus geantwortet hat (nur Diagnose).
+bool servosOk();
+
 // EINMAL pro loop() - bewegt alle Servos einen Schritt Richtung Ziel.
 void servosUpdate();
 

@@ -93,6 +93,9 @@ void loop() {
   k.sonnenSeite = sonnenSeiteAus(k.stunde);
   eingaengeLesen(k);         // Taster/Reeds entprellt + Etagen-Klima-Modus
   sensorenLesen(k);          // Temperatur, Feuchte, Solar-Spannung
+  k.i2cMcpInOk  = digitalInputOk();    // I2C-Diagnose fuer die Telemetrie
+  k.i2cMcpOutOk = digitaleOutputsOk();
+  k.i2cPcaOk    = servosOk();
 
   kommunikation.update_empfang();
 
@@ -162,10 +165,12 @@ void aufzugBedienen() {
   if (geradeGedrueckt(Eingang::AUFZUG_TASTER_OG2)) aufzug.fahreZu(Aufzug::Etage::OG2);
 
   // Etagen-Reeds + oberer Ueberfahr-Schalter -> Motor takten / stoppen (JEDE Loop!)
-  aufzug.update(gedrueckt(Eingang::REED_AUFZUG_EG),
-                gedrueckt(Eingang::REED_AUFZUG_OG1),
-                gedrueckt(Eingang::REED_AUFZUG_OG2),
-                gedrueckt(Eingang::REED_AUFZUG_OBEN));
+  // ROH (unentprellt) lesen: bei fahrender Kabine ist der Reed-Impuls oft kuerzer
+  // als die 50-ms-Entprellung -> sonst wuerde der Aufzug die Etage nicht erkennen.
+  aufzug.update(gedruecktRoh(Eingang::REED_AUFZUG_EG),
+                gedruecktRoh(Eingang::REED_AUFZUG_OG1),
+                gedruecktRoh(Eingang::REED_AUFZUG_OG2),
+                gedruecktRoh(Eingang::REED_AUFZUG_OBEN));
   // TODO: FEHLER quittieren (z.B. per Dashboard-Befehl oder Reset-Taster):
   //       aufzug.fehlerQuittieren();  + danach Referenzfahrt nach EG.
 }

@@ -1,8 +1,10 @@
 #include "Servoaktor.h"
+#include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
 namespace {
   Adafruit_PWMServoDriver pwm(ADDR_PCA9685);   // eigener PCA9685-Treiber
+  bool gServoOk = false;                        // PCA9685 am Bus erreichbar?
 
   // Interne Servo-Indizes:
   //   0..5 = Jalousie (etage*2 + seite)
@@ -23,6 +25,8 @@ namespace {
 
 void servosBegin() {
   pwm.begin();
+  Wire.beginTransmission(ADDR_PCA9685);          // Praesenz-Check (nur Diagnose)
+  gServoOk = (Wire.endTransmission() == 0);
   pwm.setPWMFreq(50);   // 50 Hz fuer Servos
 
   // Kanaele + Startlage (ZU) aus Config uebernehmen.
@@ -69,3 +73,5 @@ void fahreDachfenster(Position p, Seite seite) {
 void fahreGarage(Position p) {
   setZiel(8, SERVO_GARAGE, p);
 }
+
+bool servosOk() { return gServoOk; }

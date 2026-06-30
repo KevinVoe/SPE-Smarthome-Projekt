@@ -62,3 +62,8 @@ void digitalInputUpdate() {
 
 bool gedrueckt(Eingang e)       { return gStabil[(uint8_t)e]; }
 bool geradeGedrueckt(Eingang e) { return gFlanke[(uint8_t)e]; }
+
+// Roh (UNentprellt): unmittelbarer Pegel des letzten Reads. Fuer schnelle
+// Endschalter/Reeds, deren Impuls bei fahrender Kabine kuerzer als ENTPRELL_MS
+// sein kann (sonst wuerde der Reed nie "stabil" und der Aufzug faehrt vorbei).
+bool gedruecktRoh(Eingang e)    { return gOk && (gRoh[(uint8_t)e] == LOW); }
