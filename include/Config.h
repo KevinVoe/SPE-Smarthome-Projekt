@@ -142,9 +142,9 @@ constexpr uint8_t WHIRLPOOL_DUTY = 200;  // fester Duty (0..255), wenn der Pool 
 //  ANZAHL kuehlender Etagen (1/2/3). Werte 0..255 (analogWrite-Skala), einmessen.
 // =============================================================================
 constexpr int     KLIMA_AC_PIN    = 33;  // freier PWM-faehiger Pin
-constexpr uint8_t AC_DUTY_1ETAGE  = 100; // genau 1 Etage kuehlt
-constexpr uint8_t AC_DUTY_2ETAGEN = 180; // 2 Etagen kuehlen
-constexpr uint8_t AC_DUTY_3ETAGEN = 255; // alle 3 Etagen kuehlen
+constexpr uint8_t AC_DUTY_1ETAGE  = 40; // genau 1 Etage kuehlt
+constexpr uint8_t AC_DUTY_2ETAGEN = 70; // 2 Etagen kuehlen
+constexpr uint8_t AC_DUTY_3ETAGEN = 120; // alle 3 Etagen kuehlen
 
 // ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
 //  Noch frei: GPIO 12 + 15 (Boot-Strapping, mit Vorsicht), 35/39 (nur Eingang).
