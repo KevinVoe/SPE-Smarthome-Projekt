@@ -37,6 +37,7 @@ public:
 
   Zustand zustand()       const { return _zustand; }
   Etage   aktuelleEtage() const { return _aktuelleEtage; }
+  Etage   zielEtage()     const { return _zielEtage; }
   bool    hatFehler()     const { return _zustand == Zustand::FEHLER; }
   void    fehlerQuittieren();
 

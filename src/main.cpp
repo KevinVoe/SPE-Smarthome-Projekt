@@ -165,12 +165,12 @@ void aufzugBedienen() {
   if (geradeGedrueckt(Eingang::AUFZUG_TASTER_OG2)) aufzug.fahreZu(Aufzug::Etage::OG2);
 
   // Etagen-Reeds + oberer Ueberfahr-Schalter -> Motor takten / stoppen (JEDE Loop!)
-  // ROH (unentprellt) lesen: bei fahrender Kabine ist der Reed-Impuls oft kuerzer
-  // als die 50-ms-Entprellung -> sonst wuerde der Aufzug die Etage nicht erkennen.
-  aufzug.update(gedruecktRoh(Eingang::REED_AUFZUG_EG),
-                gedruecktRoh(Eingang::REED_AUFZUG_OG1),
-                gedruecktRoh(Eingang::REED_AUFZUG_OG2),
-                gedruecktRoh(Eingang::REED_AUFZUG_OBEN));
+  // Entprellt lesen: grosser Magnet + langsame Kabine -> Reed bleibt lange genug
+  // geschlossen; kleine ENTPRELL_MS (s. DigitalInput.cpp) filtert nur Rauschen.
+  aufzug.update(gedrueckt(Eingang::REED_AUFZUG_EG),
+                gedrueckt(Eingang::REED_AUFZUG_OG1),
+                gedrueckt(Eingang::REED_AUFZUG_OG2),
+                gedrueckt(Eingang::REED_AUFZUG_OBEN));
   // TODO: FEHLER quittieren (z.B. per Dashboard-Befehl oder Reset-Taster):
   //       aufzug.fehlerQuittieren();  + danach Referenzfahrt nach EG.
 }
@@ -269,8 +269,13 @@ void debugAusgabe(const Kontext& k, const Soll& s) {
   static uint32_t letzteLoops = 0;
   uint32_t proSekunde = gLoops - letzteLoops;
   letzteLoops = gLoops;
-  Serial.printf("          T=%.1fC rH=%.0f%% PV=%.1fV | Aufzug z=%d etage=%d | Loops %u (~%u/s)\n",
+  // Aufzug-Diagnose: zustand (0=STEHT,1=AUF,2=AB,3=FEHLER), Ist-/Zieletage und die
+  // LIVE-Reedzustaende -> so sieht man, ob der Ziel-Reed waehrend der Fahrt erkannt wird.
+  Serial.printf("          T=%.1fC rH=%.0f%% PV=%.1fV | Aufzug z=%d ist=%d ziel=%d "
+                "reeds[EG=%d OG1=%d OG2=%d ob=%d] | Loops %u (~%u/s)\n",
                 k.temperatur, k.feuchte, k.pvSpannung,
-                (int)aufzug.zustand(), (int)aufzug.aktuelleEtage(),
+                (int)aufzug.zustand(), (int)aufzug.aktuelleEtage(), (int)aufzug.zielEtage(),
+                gedrueckt(Eingang::REED_AUFZUG_EG),  gedrueckt(Eingang::REED_AUFZUG_OG1),
+                gedrueckt(Eingang::REED_AUFZUG_OG2), gedrueckt(Eingang::REED_AUFZUG_OBEN),
                 (unsigned)gLoops, (unsigned)proSekunde);
 }

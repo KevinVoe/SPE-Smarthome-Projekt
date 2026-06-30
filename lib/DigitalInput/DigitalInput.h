@@ -32,4 +32,3 @@ void digitalInputUpdate();   // EINMAL pro loop(): entprellen + Flanken berechne
 
 bool gedrueckt(Eingang e);        // entprellter Pegel: aktiv/geschlossen = true
 bool geradeGedrueckt(Eingang e);  // true GENAU im Update der steigenden Flanke
-bool gedruecktRoh(Eingang e);     // UNentprellt: unmittelbarer Pegel (fuer schnelle Reeds/Endschalter)
