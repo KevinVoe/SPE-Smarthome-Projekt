@@ -29,7 +29,7 @@ Licht          licht(lichtPins);
 DiscoLight     disco(DISCO_STRIP_PIN, DISCO_ANZAHL_LEDS);
 Sensorik       sensorik;                // DHT (Temp/Feuchte) + Solar
 Aufzug         aufzug(AUFZUG_IN1, AUFZUG_IN2, AUFZUG_IN3, AUFZUG_IN4,
-                      AUFZUG_STEP_INTERVALL_US, AUFZUG_TIMEOUT_MS);
+                      AUFZUG_STEP_INTERVALL_US, AUFZUG_TIMEOUT_MS, AUFZUG_NOTAUS_TIMEOUT_MS);
 HardwareSerial Link(2);                 // UART2 zum Pi
 Kommunikation  kommunikation(Link);
 
@@ -53,6 +53,10 @@ void setup() {
   Serial.begin(115200);
   delay(300);
   Serial.println("\n[main] Start.");
+
+  // PWM-Frequenz fuer ALLE analogWrite-Ausgaenge auf 20 kHz (unhoerbar) - MUSS
+  // vor dem ersten analogWrite (Licht/AC/Whirlpool) gesetzt werden.
+  analogWriteFrequency(MOTOR_PWM_FREQ_HZ);
 
   // I2C-Bus EINMAL starten, DANN die Module, die darauf bauen.
   Wire.begin(PIN_SDA, PIN_SCL);
@@ -208,14 +212,27 @@ void anwenden(const Soll& s) {
   fahreDachfenster(dachPos, Seite::LINKS);
   fahreDachfenster(dachPos, Seite::RECHTS);
 
-  // ── Klimaanlage (AC) + Whirlpool: PWM-Ausgaenge (nur bei Aenderung) ─────────
-  static int16_t letztAc = -1;
-  if (s.klimaanlage.wert != letztAc) {
-    analogWrite(KLIMA_AC_PIN, (uint8_t)s.klimaanlage.wert);   // Duty 0..255 (Stufe = Etagenzahl)
-    letztAc = s.klimaanlage.wert;
-  }
+  // ── Klimaanlage (AC): PWM mit Anlauf-Kick ──────────────────────────────────
+  // Beim Einschalten (Duty 0 -> >0) liegt fuer AC_ANLAUF_MS die VOLLE Spannung
+  // (255) an, damit der Motor sicher anlaeuft; danach faellt er auf den Ziel-Duty
+  // (Stufe nach Anzahl kuehlender Etagen). Steigt der Duty bei laufendem Motor
+  // (mehr Etagen), wird NICHT erneut gekickt.
+  static int16_t  acZielLetzt = 0;
+  static uint32_t acKickBis   = 0;
+  int16_t acZiel = s.klimaanlage.wert;                         // 0..255
+  if (acZiel > 0 && acZielLetzt == 0) acKickBis = millis() + AC_ANLAUF_MS;
+  acZielLetzt = acZiel;
+
+  uint8_t acOut;
+  if      (acZiel == 0)                          acOut = 0;             // aus
+  else if ((int32_t)(millis() - acKickBis) < 0)  acOut = 255;          // Anlaufphase: volle Spannung
+  else                                           acOut = (uint8_t)acZiel; // danach: Ziel-Duty
+  static int16_t acOutLetzt = -1;
+  if (acOut != acOutLetzt) { analogWrite(KLIMA_AC_PIN, acOut); acOutLetzt = acOut; }
+
+  // ── Whirlpool: an = fester Duty, aus = 0 (PWM-Frequenz global, s. setup) ────
   static int16_t letztPool = -1;
-  int16_t poolDuty = s.whirlpool.wert ? WHIRLPOOL_DUTY : 0;   // an = fester Duty, aus = 0
+  int16_t poolDuty = s.whirlpool.wert ? WHIRLPOOL_DUTY : 0;
   if (poolDuty != letztPool) {
     analogWrite(WHIRLPOOL_PIN, (uint8_t)poolDuty);
     letztPool = poolDuty;

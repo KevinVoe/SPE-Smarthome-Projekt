@@ -124,7 +124,11 @@ constexpr int      AUFZUG_IN2 = 27;
 constexpr int      AUFZUG_IN3 = 26;
 constexpr int      AUFZUG_IN4 = 25;
 constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
-constexpr uint32_t AUFZUG_TIMEOUT_MS        = 600000;  // Not-Aus, falls Ziel-Endschalter nie kommt
+constexpr uint32_t AUFZUG_TIMEOUT_MS        = 600000;  // FEHLER, falls der Ziel-Reed nie kommt
+// Not-Aus-Rueckfahrt: nach Ausloesen des oberen Schalters faehrt die Kabine nach
+// UNTEN bis zum OG2-Reed (ca. 5 cm) und quittiert sich selbst. Dieser Extra-
+// Timeout stoppt die Kabine in JEDEM Fall - auch wenn der OG2-Reed ausbleibt.
+constexpr uint32_t AUFZUG_NOTAUS_TIMEOUT_MS = 8000;
 
 // =============================================================================
 //  WHIRLPOOL  (DC-Motor ueber MOSFET, PWM vom ESP32)
@@ -145,6 +149,13 @@ constexpr int     KLIMA_AC_PIN    = 33;  // freier PWM-faehiger Pin
 constexpr uint8_t AC_DUTY_1ETAGE  = 40; // genau 1 Etage kuehlt
 constexpr uint8_t AC_DUTY_2ETAGEN = 70; // 2 Etagen kuehlen
 constexpr uint8_t AC_DUTY_3ETAGEN = 120; // alle 3 Etagen kuehlen
+// Anlauf-Kick: beim Einschalten (Duty 0 -> >0) liegt kurz die VOLLE Spannung
+// (255) an, damit der Motor sicher anlaeuft; danach faellt er auf den Duty oben.
+constexpr uint32_t AC_ANLAUF_MS   = 400;   // Dauer der Anlaufphase mit Duty 255
+
+// PWM-Frequenz fuer die Motor-Ausgaenge (AC + Whirlpool): 20 kHz -> oberhalb des
+// hoerbaren Bereichs (kein Piepsen). Wird in main/setup() gesetzt.
+constexpr uint32_t MOTOR_PWM_FREQ_HZ = 20000;
 
 // ─── FREIE PINS / RESERVE ────────────────────────────────────────────────────
 //  Noch frei: GPIO 12 + 15 (Boot-Strapping, mit Vorsicht), 35/39 (nur Eingang).

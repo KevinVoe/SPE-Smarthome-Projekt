@@ -11,14 +11,22 @@ static const uint8_t VOLLSCHRITT[4][4] = {
 };
 
 Aufzug::Aufzug(int in1, int in2, int in3, int in4,
-               uint32_t stepIntervalUs, uint32_t timeoutMs)
-  : _stepIntervalUs(stepIntervalUs), _timeoutMs(timeoutMs) {
+               uint32_t stepIntervalUs, uint32_t timeoutMs, uint32_t notausTimeoutMs)
+  : _stepIntervalUs(stepIntervalUs), _timeoutMs(timeoutMs), _notausTimeoutMs(notausTimeoutMs) {
   _in[0] = in1; _in[1] = in2; _in[2] = in3; _in[3] = in4;
 }
 
 void Aufzug::begin() {
   for (uint8_t i = 0; i < 4; i++) pinMode(_in[i], OUTPUT);
   _motorAus();   // Spulen stromlos starten
+
+  // Startup-Homing: Position bestimmen. Der erste update()-Aufruf prueft, ob schon
+  // ein Reed aktiv ist (dann bleibt die Kabine stehen). Falls nicht, faehrt sie nach
+  // OBEN bis zum ersten Reed - oder bis zum oberen Schalter, dann uebernimmt die
+  // Not-Aus-Rueckfahrt nach unten (_starteFreifahren()).
+  _motorEin(true);            // Richtung aufwaerts vorbereiten
+  _fahrtStartMs = millis();   // Timeout-Fenster fuer die Suchfahrt
+  _zustand      = Zustand::HOMING;
 }
 
 void Aufzug::_schreibeSequenz(uint8_t idx) {
@@ -36,7 +44,9 @@ void Aufzug::_motorAus() {
 }
 
 void Aufzug::fahreZu(Etage ziel) {
-  if (_zustand == Zustand::FEHLER) return;                            // erst quittieren
+  // Waehrend Homing/Not-Aus-Rueckfahrt oder im FEHLER keine neuen Fahrten annehmen.
+  if (_zustand == Zustand::FEHLER || _zustand == Zustand::HOMING ||
+      _zustand == Zustand::FREIFAHREN) return;
   if (_zustand == Zustand::STEHT && ziel == _aktuelleEtage) return;   // schon da
 
   _zielEtage    = ziel;
@@ -57,43 +67,76 @@ void Aufzug::fahreZu(Etage ziel) {
 
 void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2,
                     bool ueberfahrOben) {
-  if (_zustand != Zustand::FAEHRT_AUF && _zustand != Zustand::FAEHRT_AB) return;
+  switch (_zustand) {
 
-  // Hoechste Prioritaet: oberer Ueberfahr-Schalter -> Kabine zu weit oben -> Not-Stopp.
-  if (ueberfahrOben) {
-    _motorAus();
-    _zustand = Zustand::FEHLER;
-    return;
+    // ── Normale Fahrt zu einer Zieletage ────────────────────────────────────
+    case Zustand::FAEHRT_AUF:
+    case Zustand::FAEHRT_AB:
+      if (ueberfahrOben) { _starteFreifahren(); return; }       // Not-Aus -> Selbst-Rueckfahrt
+      if (millis() - _fahrtStartMs > _timeoutMs) {              // Sicherheit: Dauerlauf
+        _motorAus(); _zustand = Zustand::FEHLER; return;
+      }
+      // Position nachfuehren (auch beim Passieren einer Zwischen-Etage).
+      _aktualisierePosition(endschalterEg, endschalterOg1, endschalterOg2);
+      if (_aktuelleEtage == _zielEtage) {                       // Ziel-Reed erreicht
+        _motorAus(); _zustand = Zustand::STEHT; return;
+      }
+      _takte();
+      return;
+
+    // ── Startup-Homing: nach oben bis zum ERSTEN beliebigen Reed ─────────────
+    case Zustand::HOMING:
+      if (ueberfahrOben) { _starteFreifahren(); return; }       // oben ohne Etage -> runter
+      if (millis() - _fahrtStartMs > _timeoutMs) {
+        _motorAus(); _zustand = Zustand::FEHLER; return;
+      }
+      if (endschalterEg || endschalterOg1 || endschalterOg2) {  // Position gefunden
+        _aktualisierePosition(endschalterEg, endschalterOg1, endschalterOg2);
+        _motorAus(); _zustand = Zustand::STEHT;
+        return;
+      }
+      _takte();                                                 // weiter nach oben suchen
+      return;
+
+    // ── Not-Aus-Rueckfahrt: nach unten bis OG2-Reed, dann SELBST quittieren ──
+    case Zustand::FREIFAHREN:
+      // Der obere Schalter wird hier BEWUSST ignoriert (wir fahren ja von ihm weg).
+      if (endschalterOg2) {                                     // OG2 erreicht (~5 cm unter oben)
+        _aktuelleEtage = Etage::OG2; _motorAus(); _zustand = Zustand::STEHT; return;
+      }
+      if (millis() - _notausStartMs > _notausTimeoutMs) {       // Extra-Timeout: IN JEDEM FALL stoppen
+        _motorAus(); _zustand = Zustand::STEHT; return;         // auto-quittiert
+      }
+      _takte();
+      return;
+
+    default:   // STEHT, FEHLER: nichts tun
+      return;
   }
+}
 
-  // Sicherheit: Timeout (Endschalter defekt / Seil blockiert / Motor blockiert).
-  if (millis() - _fahrtStartMs > _timeoutMs) {
-    _motorAus();
-    _zustand = Zustand::FEHLER;
-    return;
-  }
+// Position aus dem GERADE aktiven Etagen-Reed nachfuehren.
+void Aufzug::_aktualisierePosition(bool eg, bool og1, bool og2) {
+  if      (eg)  _aktuelleEtage = Etage::EG;
+  else if (og1) _aktuelleEtage = Etage::OG1;
+  else if (og2) _aktuelleEtage = Etage::OG2;
+}
 
-  // Position nachfuehren: welcher Etagen-Reed ist GERADE aktiv? Auch beim
-  // Passieren einer Zwischen-Etage -> _aktuelleEtage bleibt aktuell (wichtig
-  // fuer einen Richtungswechsel mitten in der Fahrt).
-  if      (endschalterEg)  _aktuelleEtage = Etage::EG;
-  else if (endschalterOg1) _aktuelleEtage = Etage::OG1;
-  else if (endschalterOg2) _aktuelleEtage = Etage::OG2;
-
-  // Ziel erreicht? (Reed der Zieletage = einzige Wahrheit, keine Schrittzaehlung)
-  if (_aktuelleEtage == _zielEtage) {
-    _motorAus();
-    _zustand = Zustand::STEHT;
-    return;
-  }
-
-  // Motor weitertakten (nicht-blockierend): naechste Halbschritt-Phase setzen.
+// Einen Motorschritt in _richtung weiterschalten (nicht-blockierend).
+void Aufzug::_takte() {
   unsigned long jetztUs = micros();
   if (jetztUs - _letzterStepUs >= _stepIntervalUs) {
     _letzterStepUs = jetztUs;
-    _seqIndex = (uint8_t)((_seqIndex + _richtung + 4) % 4);   // war: + 8) % 8
+    _seqIndex = (uint8_t)((_seqIndex + _richtung + 4) % 4);
     _schreibeSequenz(_seqIndex);
   }
+}
+
+// Not-Aus-Rueckfahrt starten: abwaerts mit eigenem Timeout.
+void Aufzug::_starteFreifahren() {
+  _motorEin(false);                 // abwaerts
+  _notausStartMs = millis();
+  _zustand       = Zustand::FREIFAHREN;
 }
 
 void Aufzug::fehlerQuittieren() {

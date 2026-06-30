@@ -47,8 +47,11 @@ bool digitalInputOk() { return gOk; }
 
 void digitalInputUpdate() {
   uint32_t jetzt = millis();
+  // ALLE 16 Pins in EINER I2C-Transaktion lesen (statt N Einzel-Reads). Das ist
+  // ~10x schneller -> die Schleife laeuft oefter -> kein Reed-Impuls wird verpasst.
+  uint16_t bits = gOk ? mcpIn.readGPIOAB() : 0xFFFF;   // Bit i = Pin i (1=HIGH=inaktiv)
   for (uint8_t i = 0; i < N; i++) {
-    int roh = gOk ? mcpIn.digitalRead(pinVon(i)) : HIGH;
+    int roh = ((bits >> pinVon(i)) & 0x1) ? HIGH : LOW;
     if (roh != gRoh[i]) { gRoh[i] = roh; gWechsel[i] = jetzt; }
 
     bool vorher = gStabil[i];
