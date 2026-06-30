@@ -58,7 +58,7 @@ struct ServoEndlage { uint8_t kanal; uint16_t tickZu; uint16_t tickAuf; };
 constexpr ServoEndlage SERVO_JALOUSIE[3][2] = {
   { {0, 150, 500}, {1, 150, 500} },   // EG  links / rechts
   { {2, 150, 500}, {3, 150, 500} },   // OG1 links / rechts
-  { {4, 150, 500}, {5, 150, 500} },   // OG2 links / rechts
+  { {4, 180, 350}, {5, 150, 500} },   // OG2 links / rechts
 };
 constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
   {6, 150, 500},   // OG2 links
@@ -133,7 +133,7 @@ constexpr uint32_t AUFZUG_TIMEOUT_MS        = 600000;  // Not-Aus, falls Ziel-En
 //  Duty-Cycle an (Drehzahl wird nicht geregelt / nicht vom Dashboard verstellt).
 // =============================================================================
 constexpr int     WHIRLPOOL_PIN  = 32;   // freier PWM-faehiger Pin
-constexpr uint8_t WHIRLPOOL_DUTY = 255;  // fester Duty (0..255), wenn der Pool laeuft
+constexpr uint8_t WHIRLPOOL_DUTY = 125;  // fester Duty (0..255), wenn der Pool laeuft
 
 // =============================================================================
 //  KLIMAANLAGE / AC  (zentrale Anlage ueber MOSFET, PWM vom ESP32)
