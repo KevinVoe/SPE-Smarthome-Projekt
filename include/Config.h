@@ -133,7 +133,7 @@ constexpr uint32_t AUFZUG_TIMEOUT_MS        = 600000;  // Not-Aus, falls Ziel-En
 //  Duty-Cycle an (Drehzahl wird nicht geregelt / nicht vom Dashboard verstellt).
 // =============================================================================
 constexpr int     WHIRLPOOL_PIN  = 32;   // freier PWM-faehiger Pin
-constexpr uint8_t WHIRLPOOL_DUTY = 200;  // fester Duty (0..255), wenn der Pool laeuft
+constexpr uint8_t WHIRLPOOL_DUTY = 255;  // fester Duty (0..255), wenn der Pool laeuft
 
 // =============================================================================
 //  KLIMAANLAGE / AC  (zentrale Anlage ueber MOSFET, PWM vom ESP32)
