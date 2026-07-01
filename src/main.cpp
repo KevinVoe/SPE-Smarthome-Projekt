@@ -150,11 +150,13 @@ void eingaengeLesen(Kontext& k) {
 // =============================================================================
 void sensorenLesen(Kontext& k) {
   sensorik.update();                       // DHT (alle 2 s) + Solar + Bodenfeuchte
+  k.sensorOk     = sensorik.istOk();       // DHT gueltig? sonst Uhr-Automatik (sensorRegeln setzt aus)
   k.temperatur   = sensorik.temperatur();  // EIN Sensor fuers ganze Haus
   k.feuchte      = sensorik.feuchte();
   k.pvSpannung   = sensorik.pvSpannung();
   k.bodenfeuchte = sensorik.bodenfeuchte();// Gewaechshaus
-  k.helligkeit   = sensorik.pvSpannung();  // Solarpanel dient zugleich als Helligkeit (grob)
+  // Helligkeit als 0..100 % aus der PV-Spannung (Referenz SENSOR_PV_MAX_V ~ 3 V).
+  k.helligkeit   = constrain(k.pvSpannung / SENSOR_PV_MAX_V * 100.0f, 0.0f, 100.0f);
 }
 
 // =============================================================================

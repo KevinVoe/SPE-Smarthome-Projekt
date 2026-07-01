@@ -122,10 +122,44 @@ else if (nacht) {
 
 
 // =============================================================================
-//  Schicht: SENSOREN  (Prio 40)
+//  Schicht: SENSOREN  (Prio 40) - reagiert auf Ist-Werte, schlaegt die Tageszeit
 // =============================================================================
 void sensorRegeln(const Kontext& k, Soll& s) {
- 
+  const bool nacht = (k.phase == Phase::NACHT);
+
+  // ── Temperatur-Zweipunktregler je Etage (mit Hysterese) ────────────────────
+  // Nur bei gueltigem DHT. Faellt der Sensor aus, greift wieder die Tageszeit-
+  // Automatik (kein Eingriff hier -> Prio 20 bleibt bestehen).
+  if (k.sensorOk) {
+    for (uint8_t e = 0; e < ANZ_ETAGEN; e++) {
+      float soll = SOLL_TEMP_ETAGE[e] - (nacht ? SOLL_TEMP_NACHT_ABSENKUNG : 0.0f);
+      if (k.temperatur < soll - HYSTERESE) {          // zu kalt -> heizen
+        setze(s.heizung[e],  1, PRIO_SENSOR);
+        setze(s.kuehlLed[e], 0, PRIO_SENSOR);
+      } else if (k.temperatur > soll + HYSTERESE) {   // zu warm -> kuehlen
+        setze(s.heizung[e],  0, PRIO_SENSOR);
+        setze(s.kuehlLed[e], 1, PRIO_SENSOR);
+      } else {                                        // im Sollband -> beides aus
+        setze(s.heizung[e],  0, PRIO_SENSOR);
+        setze(s.kuehlLed[e], 0, PRIO_SENSOR);
+      }
+    }
+  }
+
+  // ── Daemmerungslicht: bei Dunkelheit Aussen- + Tuerlicht an (NICHT nachts) ──
+  // Nachts regelt die Tageszeit das Licht; die Daemmerungsregel greift nur in
+  // Morgen/Tag/Abend, wenn es (z.B. bewoelkt) dunkel wird.
+  if (!nacht && k.helligkeit < DAEMMER_HELLIGKEIT) {
+    setze(s.licht[0], 3, PRIO_SENSOR);   // Aussenlicht (K0)
+    setze(s.licht[1], 3, PRIO_SENSOR);   // Tuerlicht  (K1)
+  }
+
+  // ── Auto-Beschattung: pralle Sonne -> RECHTE Jalousien zu (NICHT nachts) ────
+  // Die rechte Seite (Index 1) ist die dauerhafte "Sonnenseite".
+  if (!nacht && k.helligkeit > BESCHATTUNG_HELLIGKEIT) {
+    for (uint8_t e = 0; e < ANZ_ETAGEN; e++)
+      setze(s.jalousie[e][1], 100, PRIO_SENSOR);   // 100 = zu / beschattet
+  }
 }
 
 // =============================================================================

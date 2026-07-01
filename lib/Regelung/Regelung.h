@@ -74,6 +74,7 @@ struct Kontext {
   KlimaModus klimaModus[ANZ_ETAGEN] = { KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK, KlimaModus::AUTOMATIK };
   bool       discoWunsch = false;
   bool       automatikAus = false;        // true = Automatik (Tageszeit+Sensor) eingefroren
+  bool       sensorOk     = true;         // DHT-Messwerte gueltig? (sonst Uhr-Automatik)
   // Nur Diagnose (Telemetrie): I2C-Geraete beim Start erreichbar?
   bool       i2cMcpInOk  = true;
   bool       i2cMcpOutOk = true;

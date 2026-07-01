@@ -110,6 +110,21 @@ constexpr int SENSORIK_WASSER_TROCKEN = 3000;  // ADC-Rohwert trocken (einmessen
 constexpr int SENSORIK_WASSER_NASS    = 1000;  // ADC-Rohwert nass    (einmessen!)
 
 // =============================================================================
+//  SENSOR-REGELN (Prio 40): Referenzen & Schwellen
+// -----------------------------------------------------------------------------
+//  Helligkeit wird aus der PV-Spannung abgeleitet (0..100 %). Das Panel liefert
+//  realistisch max. ~3 V -> diese Referenz skaliert alle helligkeitsbasierten Regeln.
+// =============================================================================
+constexpr float SENSOR_PV_MAX_V        = 3.0f;   // Spannungs-Referenz = 100 % Helligkeit
+constexpr float DAEMMER_HELLIGKEIT     = 25.0f;  // < %  -> dunkel: Aussen-/Tuerlicht an (nicht nachts)
+constexpr float BESCHATTUNG_HELLIGKEIT = 80.0f;  // > %  -> pralle Sonne: rechte Jalousien zu (nicht nachts)
+
+// Temperatur-Sollwerte je Etage (EG / OG1 / OG2). OG1 = Schlafraum -> kuehler;
+// EG und OG2 duerfen waermer sein. Nachts wird der Sollwert abgesenkt.
+constexpr float SOLL_TEMP_ETAGE[3]        = { 22.0f, 19.0f, 22.0f };
+constexpr float SOLL_TEMP_NACHT_ABSENKUNG = 2.0f;   // °C Absenkung nachts (alle Etagen)
+
+// =============================================================================
 //  DISCOLIGHT  (Stimmungslicht, eigener NeoPixel-Strang)
 // =============================================================================
 constexpr int      DISCO_STRIP_PIN   = 0;
