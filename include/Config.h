@@ -57,14 +57,14 @@ struct ServoEndlage { uint8_t kanal; uint16_t tickZu; uint16_t tickAuf; };
 
 constexpr ServoEndlage SERVO_JALOUSIE[3][2] = {
   { {0, 150, 500}, {1, 150, 500} },   // EG  links / rechts
-  { {2, 150, 500}, {3, 150, 500} },   // OG1 links / rechts
-  { {4, 180, 350}, {5, 150, 500} },   // OG2 links / rechts
+  { {2, 210, 400}, {3, 420, 580} },   // OG1 links / rechts konfiguriert
+  { {4, 180, 350}, {5, 305, 440} },   // OG2 links / rechts konfiguriert
 };
 constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
   {6, 150, 500},   // OG2 links
   {7, 150, 500},   // OG2 rechts
 };
-constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 500 };
+constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 380 };
 
 
 // =============================================================================
@@ -146,7 +146,7 @@ constexpr int      AUFZUG_IN1 = 14;
 constexpr int      AUFZUG_IN2 = 27;
 constexpr int      AUFZUG_IN3 = 26;
 constexpr int      AUFZUG_IN4 = 25;
-constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 800;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
+constexpr uint32_t AUFZUG_STEP_INTERVALL_US = 1000;   // Halbschritt-Takt (kleiner = schneller; <~800us verliert oft Schritte)
 constexpr uint32_t AUFZUG_TIMEOUT_MS        = 600000;  // FEHLER, falls der Ziel-Reed nie kommt
 // Not-Aus-Rueckfahrt: nach Ausloesen des oberen Schalters faehrt die Kabine nach
 // UNTEN bis zum OG2-Reed (ca. 5 cm) und quittiert sich selbst. Dieser Extra-
