@@ -122,7 +122,7 @@ Eine JSON-Zeile pro Befehl:
 | `blind1` | `1` = auf/oben, `0` = zu/unten | Jalousie 1 der Etage |
 | `blind2` | `1` / `0` | Jalousie 2 der Etage (**nur E1/E2**) |
 | `heat` | `0` / `1` | Heizung der Etage (rote LED) |
-| `ac` | `0` / `1` | **Kühlung der Etage** (blaue LED). Die zentrale AC schaltet der ESP32 selbst (Duty nach Anzahl kühlender Etagen) |
+| `ac` | `0` / `1` | **Kühlung der Etage** (blaue LED). Die zentrale AC (an/aus) schaltet der ESP32 selbst, sobald eine Etage kühlt |
 | `light` | `0 … 3` | Raumlicht-Dimmstufe der Etage |
 
 ### 4.3 Globale Befehle (kein `floor`)
@@ -134,6 +134,7 @@ Eine JSON-Zeile pro Befehl:
 | `garden_light` | `0 … 3` | Gewächshaus-Licht (K5) |
 | `party` | `0 / 1` | Disco/Partylicht OG2 |
 | `whirlpool` | `0 / 1` | Whirlpool an/aus |
+| `garage` | `0 / 1` | Garagentor (1 = auf). Zusätzlich öffnet der Ultraschallsensor das Tor automatisch bei Annäherung (< 20 cm) |
 | `skylight1` | `0 / 1` | OG2-Dachfenster (1 = auf) |
 | `skylight2` | `0 / 1` | OG2-Dachfenster (1 = auf) – wirkt aufs selbe Fenster wie skylight1 |
 | `elevator` | `0 / 1 / 2` | **Aufzug in Zieletage rufen** (0 = EG, 1 = OG1, 2 = OG2). Wird empfangen & gespeichert; die **Fahrt-Anbindung folgt** noch |
@@ -141,7 +142,7 @@ Eine JSON-Zeile pro Befehl:
 
 ### 4.4 (Noch) ohne Wirkung
 Diese Befehle werden **angenommen** (kein Fehler), haben aber derzeit **keinen
-Aktor**, d. h. sie bewirken noch nichts: `tv`, `garage`.
+Aktor**, d. h. sie bewirken noch nichts: `tv`.
 (`front_door` ist entfallen und wird nicht kommen.)
 
 ### 4.5 Beispiele

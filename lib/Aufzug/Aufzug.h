@@ -16,6 +16,7 @@
 // =============================================================================
 #pragma once
 #include <Arduino.h>
+#include "esp_timer.h"   // Hardware-Timer fuer gleichmaessigen Schritttakt
 
 class Aufzug {
 public:
@@ -48,19 +49,27 @@ private:
   void _motorAus();
   void _schreibeSequenz(uint8_t idx);
   void _aktualisierePosition(bool eg, bool og1, bool og2);
-  void _takte();              // einen Schritt in _richtung (nicht-blockierend)
   void _starteFreifahren();   // Not-Aus-Rueckfahrt nach unten starten
   bool _endschalterFuer(Etage e, bool eg, bool og1, bool og2) const;
 
+  // Der Motor wird von einem ESP32-Hardware-Timer (esp_timer) getaktet, damit die
+  // Schritte GLEICHMAESSIG kommen - unabhaengig davon, wie lange die Haupt-Loop
+  // gerade braucht (LCD/DHT/Telemetrie). _onTimer() macht EINEN Schritt, solange
+  // _faehrt gesetzt ist. Gemeinsame Felder sind per _mux geschuetzt.
+  static void _timerThunk(void* arg);   // C-Callback -> ruft _onTimer()
+  void        _onTimer();
+
   int      _in[4];                  // IN1..IN4 (ULN2003)
   uint32_t _stepIntervalUs, _timeoutMs, _notausTimeoutMs;
+  esp_timer_handle_t _timer = nullptr;
+  portMUX_TYPE       _mux   = portMUX_INITIALIZER_UNLOCKED;
 
   Zustand  _zustand       = Zustand::STEHT;
   Etage    _aktuelleEtage = Etage::EG;
   Etage    _zielEtage     = Etage::EG;
-  int8_t   _richtung      = +1;     // +1 = aufwaerts, -1 = abwaerts (Sequenzrichtung)
-  uint8_t  _seqIndex      = 0;      // 0..7 (Halbschritt-Phase)
-  unsigned long _letzterStepUs = 0;
+  volatile int8_t  _richtung = +1;     // +1 = aufwaerts, -1 = abwaerts (Timer liest)
+  volatile uint8_t _seqIndex = 0;      // 0..3 (Vollschritt-Phase, Timer veraendert)
+  volatile bool    _faehrt   = false;  // true = Timer soll takten
   unsigned long _fahrtStartMs  = 0;
   unsigned long _notausStartMs = 0;
 };

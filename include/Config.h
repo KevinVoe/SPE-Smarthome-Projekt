@@ -9,7 +9,7 @@
 #include <Arduino.h>   // uint8_t / uint16_t / uint32_t
 
 // ── Dashboard-Override mit Time-To-Live ─────────────────────────────────────
-constexpr uint32_t DASHBOARD_TTL_MS = 3000;   // 3 s (Testwert): Override-Dauer; Pi muss Befehle wiederholen, sonst Automatik
+constexpr uint32_t DASHBOARD_TTL_MS = 30000;  // 30 s: Dauer eines Dashboard-Handeingriffs (Pi muss vor Ablauf nachsenden)
 constexpr uint32_t FREEZE_TTL_MS    = 300000; // Automatik-Stopp vom Dashboard: nach 5 min zurueck auf Automatik
 
 // =============================================================================
@@ -66,6 +66,11 @@ constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
 };
 constexpr ServoEndlage SERVO_GARAGE = { 0, 150, 370 };
 
+// Nach Erreichen der Zielposition wird das PWM-Signal der Servos abgeschaltet
+// (leise -> kein Fiepen), sobald sie SERVO_ABSCHALT_VERZUG_MS gestanden haben.
+// AUSNAHME: der Garagen-Servo (interner Index 8) haelt sein Signal (Haltekraft noetig).
+constexpr uint32_t SERVO_ABSCHALT_VERZUG_MS = 500;
+
 
 // =============================================================================
 //  LICHT  (12V LED-Strips ueber IRLZ44N-MOSFETs, PWM vom ESP32)
@@ -108,6 +113,18 @@ constexpr int SENSORIK_SOLAR_PIN = 36;   // Solarpanel ueber 50/50-Teiler an ADC
 constexpr int SENSORIK_WASSER_PIN     = 34;    // Signal (analog, ADC1_CH6)
 constexpr int SENSORIK_WASSER_TROCKEN = 3000;  // ADC-Rohwert trocken (einmessen!)
 constexpr int SENSORIK_WASSER_NASS    = 1000;  // ADC-Rohwert nass    (einmessen!)
+
+// =============================================================================
+//  ULTRASCHALL (HC-SR04) + GARAGEN-AUTOMATIK
+// -----------------------------------------------------------------------------
+//  Objekt naeher als GARAGE_OBJEKT_CM -> Garage oeffnet fuer GARAGE_AUF_ZEIT_MS.
+//  ACHTUNG: HC-SR04-Echo liefert 5 V -> Spannungsteiler auf 3,3 V noetig!
+// =============================================================================
+constexpr int      ULTRASCHALL_TRIG_PIN     = 12;    // Trigger (Ausgang)
+constexpr int      ULTRASCHALL_ECHO_PIN     = 35;    // Echo (nur Eingang, 3,3 V!)
+constexpr uint32_t ULTRASCHALL_INTERVALL_MS = 100;   // Messtakt (gedrosselt)
+constexpr float    GARAGE_OBJEKT_CM         = 20.0f; // Ausloese-Distanz
+constexpr uint32_t GARAGE_AUF_ZEIT_MS       = 8000;  // Garage bleibt danach so lange offen
 
 // =============================================================================
 //  SENSOR-REGELN (Prio 40): Referenzen & Schwellen

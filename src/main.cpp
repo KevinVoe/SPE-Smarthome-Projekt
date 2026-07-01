@@ -20,6 +20,7 @@
 #include "Aufzug.h"
 #include "Kommunikation.h"
 #include "Anzeige.h"
+#include "Ultraschall.h"
 
 // ─── Module / globale Objekte ────────────────────────────────────────────────
 const int lichtPins[LICHT_MAX_KANAELE] = {
@@ -34,6 +35,7 @@ Aufzug         aufzug(AUFZUG_IN1, AUFZUG_IN2, AUFZUG_IN3, AUFZUG_IN4,
 HardwareSerial Link(2);                 // UART2 zum Pi
 Kommunikation  kommunikation(Link);
 Anzeige        anzeige;                 // 20x4-LCD-Statusdisplay (I2C)
+Ultraschall    ultraschall(ULTRASCHALL_TRIG_PIN, ULTRASCHALL_ECHO_PIN);  // Garagen-Sensor
 
 // Persistenter Zustand ZWISCHEN den Loops (Soll wird jede Loop neu gebaut):
 DashboardState gDash;         // Pi-Overrides (mit TTL)
@@ -47,6 +49,7 @@ void debugAusgabe(const Kontext& k, const Soll& s);
 void eingaengeLesen(Kontext& k);
 void sensorenLesen(Kontext& k);
 void aufzugBedienen();
+void garageBedienen(Soll& soll);
 
 // =============================================================================
 //  SETUP
@@ -56,8 +59,7 @@ void setup() {
   delay(300);
   Serial.println("\n[main] Start.");
 
-  // PWM-Frequenz fuer ALLE analogWrite-Ausgaenge auf 20 kHz (unhoerbar) - MUSS
-  // vor dem ersten analogWrite (Licht/AC/Whirlpool) gesetzt werden.
+  // PWM-Frequenz der analogWrite-Ausgaenge (Licht) auf 20 kHz - unhoerbar.
   analogWriteFrequency(MOTOR_PWM_FREQ_HZ);
 
   // I2C-Bus EINMAL starten, DANN die Module, die darauf bauen.
@@ -74,9 +76,10 @@ void setup() {
   licht.begin();
   disco.begin();
   sensorik.begin();         // DHT + Solar
-  aufzug.begin();           // Schrittmotor-Pins (IN1-4)
-  analogWrite(KLIMA_AC_PIN, 0);    // zentrale AC (PWM) sicher aus
-  analogWrite(WHIRLPOOL_PIN, 0);   // Whirlpool (PWM) sicher aus
+  aufzug.begin();           // Schrittmotor-Pins (IN1-4) + Hardware-Timer
+  pinMode(KLIMA_AC_PIN, OUTPUT);   digitalWrite(KLIMA_AC_PIN, LOW);    // AC nur an/aus
+  pinMode(WHIRLPOOL_PIN, OUTPUT);  digitalWrite(WHIRLPOOL_PIN, LOW);   // Whirlpool nur an/aus
+  ultraschall.begin();             // HC-SR04 (Garagen-Sensor)
   anzeige.begin();                 // 20x4-LCD (I2C) - Wire laeuft bereits
 
   // Link zum Raspberry Pi (UART2: RX=16, TX=17)
@@ -121,6 +124,7 @@ void loop() {
   }
   handRegeln(k, soll);           // Taster (Hand) - bleibt auch im Freeze aktiv
   dashboardRegeln(soll, gDash);  // Pi-Overrides - bleiben aktiv
+  garageBedienen(soll);          // Ultraschall: Objekt nah -> Garage auf (zeitgesteuert)
 
   // 3) Konflikte prioritaetsbewusst aufloesen
   interlocks(soll);
@@ -186,6 +190,20 @@ void aufzugBedienen() {
 }
 
 // =============================================================================
+//  GARAGE  –  Ultraschall-Automatik: Objekt naeher als GARAGE_OBJEKT_CM oeffnet
+//  das Tor fuer GARAGE_AUF_ZEIT_MS (Fenster wird bei anhaltender Naehe erneuert).
+//  Setzt s.garage mit hoher Prio -> oeffnet auch gegen einen Dashboard-Befehl.
+// =============================================================================
+void garageBedienen(Soll& soll) {
+  ultraschall.update();                              // gedrosselte Messung
+  static uint32_t offenBis = 0;
+  if (ultraschall.distanzCm() < GARAGE_OBJEKT_CM)
+    offenBis = millis() + GARAGE_AUF_ZEIT_MS;        // Objekt nah -> Fenster (neu) aufziehen
+  if ((int32_t)(millis() - offenBis) < 0)
+    setze(soll.garage, 1, PRIO_HAND);                // Garage auf, solange das Fenster laeuft
+}
+
+// =============================================================================
 //  ANWENDEN  –  Soll-Zustand auf die Module uebertragen (EINZIGE Hardware-Stelle)
 // =============================================================================
 void anwenden(const Soll& s) {
@@ -217,32 +235,16 @@ void anwenden(const Soll& s) {
   Position dachPos = s.dachfensterOG2.wert >= 50 ? Position::AUF : Position::ZU;
   fahreDachfenster(dachPos, Seite::LINKS);
   fahreDachfenster(dachPos, Seite::RECHTS);
+  fahreGarage(s.garage.wert ? Position::AUF : Position::ZU);   // Garagentor-Servo
 
-  // ── Klimaanlage (AC): PWM mit Anlauf-Kick ──────────────────────────────────
-  // Beim Einschalten (Duty 0 -> >0) liegt fuer AC_ANLAUF_MS die VOLLE Spannung
-  // (255) an, damit der Motor sicher anlaeuft; danach faellt er auf den Ziel-Duty
-  // (Stufe nach Anzahl kuehlender Etagen). Steigt der Duty bei laufendem Motor
-  // (mehr Etagen), wird NICHT erneut gekickt.
-  static int16_t  acZielLetzt = 0;
-  static uint32_t acKickBis   = 0;
-  int16_t acZiel = s.klimaanlage.wert;                         // 0..255
-  if (acZiel > 0 && acZielLetzt == 0) acKickBis = millis() + AC_ANLAUF_MS;
-  acZielLetzt = acZiel;
+  // ── Klimaanlage (AC) + Whirlpool: nur AN/AUS (kein PWM mehr) ────────────────
+  static int8_t letztAc = -1;
+  int8_t acAn = (s.klimaanlage.wert > 0) ? 1 : 0;   // an, sobald irgendeine Etage kuehlt
+  if (acAn != letztAc) { digitalWrite(KLIMA_AC_PIN, acAn ? HIGH : LOW); letztAc = acAn; }
 
-  uint8_t acOut;
-  if      (acZiel == 0)                          acOut = 0;             // aus
-  else if ((int32_t)(millis() - acKickBis) < 0)  acOut = 255;          // Anlaufphase: volle Spannung
-  else                                           acOut = (uint8_t)acZiel; // danach: Ziel-Duty
-  static int16_t acOutLetzt = -1;
-  if (acOut != acOutLetzt) { analogWrite(KLIMA_AC_PIN, acOut); acOutLetzt = acOut; }
-
-  // ── Whirlpool: an = fester Duty, aus = 0 (PWM-Frequenz global, s. setup) ────
-  static int16_t letztPool = -1;
-  int16_t poolDuty = s.whirlpool.wert ? WHIRLPOOL_DUTY : 0;
-  if (poolDuty != letztPool) {
-    analogWrite(WHIRLPOOL_PIN, (uint8_t)poolDuty);
-    letztPool = poolDuty;
-  }
+  static int8_t letztPool = -1;
+  int8_t poolAn = s.whirlpool.wert ? 1 : 0;
+  if (poolAn != letztPool) { digitalWrite(WHIRLPOOL_PIN, poolAn ? HIGH : LOW); letztPool = poolAn; }
 
   // ── Disco (NeoPixel) ───────────────────────────────────────────────────────
   static uint8_t letzterDisco = 0;

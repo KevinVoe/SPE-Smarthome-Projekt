@@ -55,8 +55,8 @@ void Anzeige::_zeichneStatus(const Kontext& k) {
   snprintf(zeile, sizeof(zeile), "Temp %.1f C  rF %.0f%%", k.temperatur, k.feuchte);
   printZeile(1, zeile);
 
-  // Zeile 2: Solarspannung.
-  snprintf(zeile, sizeof(zeile), "Solar %.1f V", k.pvSpannung);
+  // Zeile 2: Solarspannung + Garten-/Gewaechshaus-Bodenfeuchte.
+  snprintf(zeile, sizeof(zeile), "Solar %.1fV Gart %.0f%%", k.pvSpannung, k.bodenfeuchte);
   printZeile(2, zeile);
 
   // Zeile 3: Aufzugsposition.

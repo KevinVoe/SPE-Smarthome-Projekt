@@ -1,8 +1,10 @@
-1. Garage durch Dashboard steuern lassen
-2. Ultraschallsensor einbinden. Wenn näher als 20cm ein objekt ist soll die Garaga für eine konfigurierbare Zeit aufgehen
-3. Aufzug läuft ruckelig. Prüfen, ob steps vergessen werden oder ob mechanisch ein Problem vorliegt
-4. Feuchtesensor des Gartens anbinden
-5. Die Servomotoren fiepen dauerhaft (beim Stillstehen). Um das zu beheben könnte man nach dem fahren der servos den strom wegnehmen, sodass diese keine geräusche mehr machen (bis auf dem Servo der Garage brauchen die Servos keine Kraft, um dachfenster oder Jalousie offen zu halten, wodurch das wegnehmen des signals bzw der Kraft kein Problem darstellen würde)
-6. Tageszyklus auf 4 Minuten setzen
-7. Motoren für whirpool und AC nicht mehr über pwm, sondern nur an oder aus
-8. Länge des Handeingriffs bei der Dashboardbedienung verlängern
+# TODO — Umsetzung (Branch: TODO-Umsetzung)
+
+1. [x] **Garage per Dashboard**: `cmd "garage"` → `Soll.garage` → Garagen-Servo; Zustand in Telemetrie (`outdoor.garage`).
+2. [x] **Ultraschallsensor** (HC-SR04, Trig=GPIO12 / Echo=GPIO35): Objekt näher als `GARAGE_OBJEKT_CM` (20 cm) → Garage öffnet für `GARAGE_AUF_ZEIT_MS` (8 s, konfigurierbar). ⚠️ Echo liefert 5 V → **Spannungsteiler auf 3,3 V** nötig!
+3. [x] **Aufzug-Laufruhe**: Schrittmotor wird jetzt über einen **ESP32-Hardware-Timer** (`esp_timer`) getaktet → gleichmäßig, unabhängig von Loop-Blockaden (LCD-Refresh, DHT-Lesen). Position bleibt reed-basiert. Diagnose: das Ruckeln kam vom Takten aus der blockierenden Haupt-Loop. Falls weiterhin unruhig → `AUFZUG_STEP_INTERVALL_US` erhöhen (28BYJ ist bei 1 ms nah am Limit) bzw. Mechanik prüfen.
+4. [x] **Garten-/Gewächshaus-Feuchte**: war bereits eingelesen + in Telemetrie; jetzt zusätzlich auf dem **LCD** (Solar-Zeile: „Gart XX%").
+5. [x] **Servo-Fiepen**: nach Erreichen der Zielposition wird das PWM-Signal abgeschaltet (Verzug `SERVO_ABSCHALT_VERZUG_MS` = 500 ms) → leise. **Ausnahme:** Garagen-Servo hält sein Signal (Haltekraft).
+6. [x] **Tageszyklus 4 min**: `TAG_LAENGE_MS = 240000`.
+7. [x] **Whirlpool + AC nur an/aus**: `digitalWrite` statt PWM (kein Duty/Anlauf-Kick mehr).
+8. [x] **Handeingriff verlängert**: `DASHBOARD_TTL_MS` 3 s → 30 s.

@@ -12,14 +12,22 @@ namespace {
   //   8    = Garage
   constexpr uint8_t ANZ_SERVOS = 9;
   constexpr uint16_t SCHRITT   = 4;            // Ticks pro Update -> Tempo (kleiner = langsamer)
+  constexpr uint8_t GARAGE_IDX = 8;            // dieser Servo behaelt sein Signal (Haltekraft)
 
   uint8_t  gKanal[ANZ_SERVOS];
   uint16_t gIst[ANZ_SERVOS];
   uint16_t gZiel[ANZ_SERVOS];
+  bool     gReleased[ANZ_SERVOS];              // Signal bereits abgeschaltet (leise)?
+  uint32_t gAnkunftMs[ANZ_SERVOS];             // seit wann in Zielposition (0 = faehrt)
 
   void setZiel(uint8_t idx, const ServoEndlage& s, Position p) {
     gKanal[idx] = s.kanal;
-    gZiel[idx]  = (p == Position::AUF) ? s.tickAuf : s.tickZu;
+    uint16_t ziel = (p == Position::AUF) ? s.tickAuf : s.tickZu;
+    if (ziel != gZiel[idx]) {                  // echte Neu-Fahrt -> Abschaltung zuruecknehmen
+      gZiel[idx]      = ziel;
+      gReleased[idx]  = false;
+      gAnkunftMs[idx] = 0;
+    }
   }
 }
 
@@ -43,7 +51,10 @@ void servosBegin() {
   gKanal[8] = SERVO_GARAGE.kanal;
   gIst[8] = gZiel[8] = SERVO_GARAGE.tickZu;
 
-  for (uint8_t i = 0; i < ANZ_SERVOS; i++) pwm.setPWM(gKanal[i], 0, gIst[i]);
+  for (uint8_t i = 0; i < ANZ_SERVOS; i++) {
+    gReleased[i] = false; gAnkunftMs[i] = 0;
+    pwm.setPWM(gKanal[i], 0, gIst[i]);
+  }
 }
 
 void servosUpdate() {
@@ -52,11 +63,22 @@ void servosUpdate() {
   letzt = millis();
 
   for (uint8_t i = 0; i < ANZ_SERVOS; i++) {
-    if (gIst[i] == gZiel[i]) continue;        // angekommen -> nichts senden
-    int diff    = (int)gZiel[i] - (int)gIst[i];
-    int schritt = (abs(diff) < (int)SCHRITT) ? diff : (diff > 0 ? (int)SCHRITT : -(int)SCHRITT);
-    gIst[i]     = (uint16_t)((int)gIst[i] + schritt);
-    pwm.setPWM(gKanal[i], 0, gIst[i]);
+    if (gIst[i] != gZiel[i]) {                       // ── in Bewegung: einen Schritt fahren ──
+      int diff    = (int)gZiel[i] - (int)gIst[i];
+      int schritt = (abs(diff) < (int)SCHRITT) ? diff : (diff > 0 ? (int)SCHRITT : -(int)SCHRITT);
+      gIst[i]     = (uint16_t)((int)gIst[i] + schritt);
+      pwm.setPWM(gKanal[i], 0, gIst[i]);
+      gReleased[i]  = false;
+      gAnkunftMs[i] = 0;
+      continue;
+    }
+    // ── angekommen: nach kurzer Wartezeit das Signal abschalten (kein Fiepen) ──
+    if (i == GARAGE_IDX || gReleased[i]) continue;   // Garage haelt; Rest ggf. schon abgeschaltet
+    if (gAnkunftMs[i] == 0) gAnkunftMs[i] = millis();
+    if (millis() - gAnkunftMs[i] >= SERVO_ABSCHALT_VERZUG_MS) {
+      pwm.setPWM(gKanal[i], 0, 4096);                // OFF-Bit (voll aus) -> Servo stromlos/leise
+      gReleased[i] = true;
+    }
   }
 }
 

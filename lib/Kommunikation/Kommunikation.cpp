@@ -88,7 +88,7 @@ String Kommunikation::_baueTelemetrieJson(const Soll& s, const Kontext& k) {
   outdoor["ext_light"] = s.licht[0].wert;
   outdoor["door_light"] = s.licht[1].wert;
   outdoor["whirlpool"] = s.whirlpool.wert;   // 0/1 (an/aus)
-  outdoor["garage"] = 0;
+  outdoor["garage"] = s.garage.wert;   // 0=zu, 1=auf
   outdoor["garden_light"] = s.licht[5].wert;   // Stufe 0..3
   outdoor["humid_garden"] = k.bodenfeuchte;   // Gewaechshaus-Bodenfeuchte (% 0..100)
 
