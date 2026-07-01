@@ -131,6 +131,14 @@ constexpr int      DISCO_STRIP_PIN   = 0;
 constexpr uint16_t DISCO_ANZAHL_LEDS = 26;
 
 // =============================================================================
+//  LCD-STATUSDISPLAY  (20x4 Zeichen, HD44780 ueber PCF8574-I2C-Backpack)
+// =============================================================================
+constexpr uint8_t  ADDR_LCD                 = 0x27;  // I2C-Adresse (haeufig 0x27 oder 0x3F)
+constexpr uint8_t  LCD_SPALTEN              = 20;
+constexpr uint8_t  LCD_ZEILEN               = 4;
+constexpr uint32_t LCD_UPDATE_INTERVALL_MS  = 1000;  // Aktualisierungs-Intervall der Statusseite
+
+// =============================================================================
 //  AUFZUG  (Schrittmotor 28BYJ-48 ueber ULN2003: IN1-IN4 = Halbschritt-Sequenz)
 //  4 benachbarte, freie Output-Pins auf der linken ESP32-Leiste.
 // =============================================================================

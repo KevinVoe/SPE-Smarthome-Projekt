@@ -19,6 +19,7 @@
 #include "Sensorik.h"
 #include "Aufzug.h"
 #include "Kommunikation.h"
+#include "Anzeige.h"
 
 // ─── Module / globale Objekte ────────────────────────────────────────────────
 const int lichtPins[LICHT_MAX_KANAELE] = {
@@ -32,6 +33,7 @@ Aufzug         aufzug(AUFZUG_IN1, AUFZUG_IN2, AUFZUG_IN3, AUFZUG_IN4,
                       AUFZUG_STEP_INTERVALL_US, AUFZUG_TIMEOUT_MS, AUFZUG_NOTAUS_TIMEOUT_MS);
 HardwareSerial Link(2);                 // UART2 zum Pi
 Kommunikation  kommunikation(Link);
+Anzeige        anzeige;                 // 20x4-LCD-Statusdisplay (I2C)
 
 // Persistenter Zustand ZWISCHEN den Loops (Soll wird jede Loop neu gebaut):
 DashboardState gDash;         // Pi-Overrides (mit TTL)
@@ -75,6 +77,7 @@ void setup() {
   aufzug.begin();           // Schrittmotor-Pins (IN1-4)
   analogWrite(KLIMA_AC_PIN, 0);    // zentrale AC (PWM) sicher aus
   analogWrite(WHIRLPOOL_PIN, 0);   // Whirlpool (PWM) sicher aus
+  anzeige.begin();                 // 20x4-LCD (I2C) - Wire laeuft bereits
 
   // Link zum Raspberry Pi (UART2: RX=16, TX=17)
   Link.begin(115200, SERIAL_8N1, 16, 17);
@@ -127,6 +130,7 @@ void loop() {
   aufzugBedienen();
   k.aufzugEtage = (uint8_t)aufzug.aktuelleEtage();   // fuer die Telemetrie
   telemetrie(k, soll);
+  anzeige.update(k);                 // LCD-Statusseite (intern auf Intervall gedrosselt)
 
   // Debug-Ausgabe (1x pro Sekunde)
   static uint32_t t = 0;
