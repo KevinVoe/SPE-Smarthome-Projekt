@@ -56,15 +56,15 @@ constexpr uint32_t TASTER_TTL_MS     = 10000;        // Hand-Modus -> danach Aut
 struct ServoEndlage { uint8_t kanal; uint16_t tickZu; uint16_t tickAuf; };
 
 constexpr ServoEndlage SERVO_JALOUSIE[3][2] = {
-  { {0, 150, 500}, {1, 150, 500} },   // EG  links / rechts
-  { {2, 210, 400}, {3, 420, 580} },   // OG1 links / rechts konfiguriert
-  { {4, 180, 350}, {5, 305, 440} },   // OG2 links / rechts konfiguriert
+  { {14, 150, 500}, {15, 150, 500} },   // EG  links / rechts
+  { {6, 210, 400}, {7, 420, 580} },   // OG1 links / rechts konfiguriert
+  { {5, 180, 350}, {4, 320, 440} },   // OG2 links / rechts konfiguriert
 };
 constexpr ServoEndlage SERVO_DACHFENSTER[2] = {
-  {6, 150, 500},   // OG2 links
-  {7, 150, 500},   // OG2 rechts
+  {1, 150, 300},   // OG2 links
+  {3, 500, 300},   // OG2 rechts
 };
-constexpr ServoEndlage SERVO_GARAGE = { 8, 150, 380 };
+constexpr ServoEndlage SERVO_GARAGE = { 0, 150, 370 };
 
 
 // =============================================================================
