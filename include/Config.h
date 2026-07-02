@@ -123,8 +123,8 @@ constexpr int SENSORIK_WASSER_NASS    = 1000;  // ADC-Rohwert nass    (einmessen
 constexpr int      ULTRASCHALL_TRIG_PIN     = 12;    // Trigger (Ausgang)
 constexpr int      ULTRASCHALL_ECHO_PIN     = 35;    // Echo (nur Eingang, 3,3 V!)
 constexpr uint32_t ULTRASCHALL_INTERVALL_MS = 100;   // Messtakt (gedrosselt)
-constexpr float    GARAGE_OBJEKT_CM         = 20.0f; // Ausloese-Distanz
-constexpr uint32_t GARAGE_AUF_ZEIT_MS       = 8000;  // Garage bleibt danach so lange offen
+constexpr float    GARAGE_OBJEKT_CM         = 10.0f; // Ausloese-Distanz
+constexpr uint32_t GARAGE_AUF_ZEIT_MS       = 2000;  // Garage bleibt danach so lange offen
 
 // =============================================================================
 //  SENSOR-REGELN (Prio 40): Referenzen & Schwellen
