@@ -18,25 +18,11 @@ Aufzug::Aufzug(int in1, int in2, int in3, int in4,
 
 void Aufzug::begin() {
   for (uint8_t i = 0; i < 4; i++) pinMode(_in[i], OUTPUT);
-  _motorAus();   // Spulen stromlos starten
+  _motorAus();
 
-  // Hardware-Timer fuer den gleichmaessigen Schritttakt einrichten. Er laeuft
-  // dauerhaft; _onTimer() taktet aber nur, wenn _faehrt gesetzt ist.
-  esp_timer_create_args_t args = {};
-  args.callback        = &Aufzug::_timerThunk;
-  args.arg             = this;
-  args.dispatch_method = ESP_TIMER_TASK;
-  args.name            = "aufzug_step";
-  esp_timer_create(&args, &_timer);
-  esp_timer_start_periodic(_timer, _stepIntervalUs);
-
-  // Startup-Homing: Position bestimmen. Der erste update()-Aufruf prueft, ob schon
-  // ein Reed aktiv ist (dann bleibt die Kabine stehen). Falls nicht, faehrt sie nach
-  // OBEN bis zum ersten Reed - oder bis zum oberen Schalter, dann uebernimmt die
-  // Not-Aus-Rueckfahrt nach unten (_starteFreifahren()).
-  _fahrtStartMs = millis();   // Timeout-Fenster fuer die Suchfahrt
+  _motorEin(true);
+  _fahrtStartMs = millis();
   _zustand      = Zustand::HOMING;
-  _motorEin(true);            // aufwaerts + Takt freigeben
 }
 
 void Aufzug::_schreibeSequenz(uint8_t idx) {
@@ -45,29 +31,12 @@ void Aufzug::_schreibeSequenz(uint8_t idx) {
 }
 
 void Aufzug::_motorEin(bool aufwaerts) {
-  portENTER_CRITICAL(&_mux);
-  _richtung = aufwaerts ? +1 : -1;
-  _faehrt   = true;                    // Timer taktet ab jetzt
-  portEXIT_CRITICAL(&_mux);
+  _richtung      = aufwaerts ? +1 : -1;
+  _letzterStepUs = micros();
 }
 
 void Aufzug::_motorAus() {
-  portENTER_CRITICAL(&_mux);
-  _faehrt = false;                     // Timer stoppt
-  for (uint8_t i = 0; i < 4; i++) digitalWrite(_in[i], LOW);   // alle Spulen stromlos
-  portEXIT_CRITICAL(&_mux);
-}
-
-// Vom Hardware-Timer aufgerufen: EIN Schritt in _richtung, solange _faehrt gesetzt.
-void Aufzug::_timerThunk(void* arg) { static_cast<Aufzug*>(arg)->_onTimer(); }
-
-void Aufzug::_onTimer() {
-  portENTER_CRITICAL(&_mux);
-  if (_faehrt) {
-    _seqIndex = (uint8_t)((_seqIndex + _richtung + 4) % 4);
-    _schreibeSequenz(_seqIndex);
-  }
-  portEXIT_CRITICAL(&_mux);
+  for (uint8_t i = 0; i < 4; i++) digitalWrite(_in[i], LOW);
 }
 
 void Aufzug::fahreZu(Etage ziel) {
@@ -92,6 +61,15 @@ void Aufzug::fahreZu(Etage ziel) {
   _zustand = aufwaerts ? Zustand::FAEHRT_AUF : Zustand::FAEHRT_AB;
 }
 
+void Aufzug::_takte() {
+  unsigned long jetztUs = micros();
+  if (jetztUs - _letzterStepUs >= _stepIntervalUs) {
+    _letzterStepUs = jetztUs;
+    _seqIndex = (uint8_t)((_seqIndex + _richtung + 4) % 4);
+    _schreibeSequenz(_seqIndex);
+  }
+}
+
 void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2,
                     bool ueberfahrOben) {
   switch (_zustand) {
@@ -108,7 +86,8 @@ void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2
       if (_aktuelleEtage == _zielEtage) {                       // Ziel-Reed erreicht
         _motorAus(); _zustand = Zustand::STEHT; return;
       }
-      return;   // Motor taktet der Hardware-Timer (_onTimer)
+      _takte();   // nicht-blockierender Einzelschritt
+      return;
 
     // ── Startup-Homing: nach oben bis zum ERSTEN beliebigen Reed ─────────────
     case Zustand::HOMING:
@@ -121,7 +100,8 @@ void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2
         _motorAus(); _zustand = Zustand::STEHT;
         return;
       }
-      return;   // Motor taktet der Hardware-Timer (Homing: weiter nach oben)
+      _takte();   // nicht-blockierender Einzelschritt
+      return;
 
     // ── Not-Aus-Rueckfahrt: nach unten bis OG2-Reed, dann SELBST quittieren ──
     case Zustand::FREIFAHREN:
@@ -130,9 +110,10 @@ void Aufzug::update(bool endschalterEg, bool endschalterOg1, bool endschalterOg2
         _aktuelleEtage = Etage::OG2; _motorAus(); _zustand = Zustand::STEHT; return;
       }
       if (millis() - _notausStartMs > _notausTimeoutMs) {       // Extra-Timeout: IN JEDEM FALL stoppen
-        _motorAus(); _zustand = Zustand::STEHT; return;         // auto-quittiert
+        _motorAus(); _zustand = Zustand::STEHT; return;
       }
-      return;   // Motor taktet der Hardware-Timer (_onTimer)
+      _takte();   // nicht-blockierender Einzelschritt
+      return;
 
     default:   // STEHT, FEHLER: nichts tun
       return;

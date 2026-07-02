@@ -62,4 +62,14 @@ void Anzeige::_zeichneStatus(const Kontext& k) {
   // Zeile 3: Aufzugsposition.
   snprintf(zeile, sizeof(zeile), "Aufzug: %s", etageName(k.aufzugEtage));
   printZeile(3, zeile);
+
+  // ── I2C-Watchdog: prueft bei jeder Aktualisierung ob das LCD noch antwortet ─
+  // Faellt die Verbindung aus (loser Stecker, I2C-Bus-Fehler), wird lcd.init()
+  // neu aufgerufen -> stellt die Anzeige automatisch wieder her.
+  Wire.beginTransmission(ADDR_LCD);
+  if (Wire.endTransmission() != 0) {
+    delay(10);
+    lcd.init();
+    lcd.backlight();
+  }
 }
